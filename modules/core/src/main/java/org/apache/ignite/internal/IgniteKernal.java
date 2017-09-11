@@ -810,6 +810,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         ackCacheConfiguration();
         ackP2pConfiguration();
         ackRebalanceConfiguration();
+        ackIgniteConfigurationInfo();
 
         // Run background network diagnostics.
         GridDiagnostic.runBackgroundCheck(igniteInstanceName, execSvc, log);
@@ -2046,6 +2047,104 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
             int jvmPid = U.jvmPid();
 
             log.info("PID: " + (jvmPid == -1 ? "N/A" : jvmPid));
+        }
+    }
+
+    /**
+     * Logs out IgniteConfiguration fields.
+     */
+
+    private void ackIgniteConfigurationInfo() {
+
+        if (log.isInfoEnabled()) {
+            log.info("IgniteHome: " + cfg.getIgniteHome() + NL);
+            log.info("Ignite instance name: " + cfg.getIgniteInstanceName());
+            log.info("Ignite work directory: " + cfg.getWorkDirectory());
+            log.info("Ignite local host: " + cfg.getLocalHost());
+            log.info("Segment check frequency: " + cfg.getSegmentCheckFrequency());
+            log.info("Public thread pool size: " + cfg.getPublicThreadPoolSize());
+            log.info("Data streamer thread pool size: " + cfg.getDataStreamerThreadPoolSize());
+            log.info("Failure detection timeout in milliseconds: " + cfg.getFailureDetectionTimeout());
+            log.info("IGFS pool size: " + cfg.getIgfsThreadPoolSize());
+            log.info("Include properties: ");
+//            for (String prop :
+//                    cfg.getIncludeProperties()) {
+//                log.info(prop);
+//            }
+//            log.info("Include types: ");
+//            for (int type :
+//                    cfg.getIncludeEventTypes()) {
+//                log.info(String.valueOf(type));
+//            }
+            log.info("Long query warning timeout: " + cfg.getLongQueryWarningTimeout());
+            log.info("Management thread pool size: " + cfg.getManagementThreadPoolSize());
+            log.info("Metrics expire time: " + cfg.getMetricsExpireTime());
+            log.info("Metrics history size: " + cfg.getMetricsHistorySize());
+            log.info("Frequency of metrics log print out: " + cfg.getMetricsLogFrequency());
+            log.info("Metrics update frequency in milliseconds: " + cfg.getMetricsUpdateFrequency());
+            log.info("Message send retries count: " + cfg.getNetworkSendRetryCount());
+            log.info("Interval between message send retries: " + cfg.getNetworkSendRetryDelay());
+            log.info("Maximum timeout for network requests: " + cfg.getNetworkTimeout());
+            log.info("Thread pool size to be used for peer class loading: " + cfg.getPeerClassLoadingThreadPoolSize());
+            log.info("Thread pool size to be used in grid: " + cfg.getPublicThreadPoolSize());
+            log.info("Thread pool size to be used in grid for query messages: " + cfg.getQueryThreadPoolSize());
+            log.info("Max count of threads can be used at rebalancing: " + cfg.getRebalanceThreadPoolSize());
+            log.info("Segmentation resolve attempts: " + cfg.getSegmentationResolveAttempts());
+            log.info("Striped pool size that should be used for cache requests processing: "
+                    + cfg.getStripedPoolSize());
+            log.info("Thread pool size to be used in grid for internal system messages: "
+                    + cfg.getSystemThreadPoolSize());
+            log.info("Time server port base: " + cfg.getTimeServerPortBase());
+            log.info("Thread pool keep alive time (in milliseconds) to be used in grid for utility cache messages"
+                    + cfg.getUtilityCacheKeepAliveTime());
+            log.info("Default thread pool size to be used in grid for utility cache messages: "
+                    + cfg.getUtilityCacheThreadPoolSize());
+        }
+
+        if (log.isQuiet()) {
+            U.quiet(false, "IgniteHome: " + cfg.getIgniteHome());
+            U.quiet(false, "Ignite instance name: " + cfg.getIgniteInstanceName());
+            U.quiet(false, "Ignite work directory: " + cfg.getWorkDirectory());
+            U.quiet(false, "Ignite local host: " + cfg.getLocalHost());
+            U.quiet(false, "Segment check frequency: " + cfg.getSegmentCheckFrequency());
+            U.quiet(false, "Public thread pool size: " + cfg.getPublicThreadPoolSize());
+            U.quiet(false, "Data streamer thread pool size: " + cfg.getDataStreamerThreadPoolSize());
+            U.quiet(false, "Failure detection timeout in milliseconds: " + cfg.getFailureDetectionTimeout());
+            U.quiet(false, "IGFS pool size: " + cfg.getIgfsThreadPoolSize());
+            U.quiet(false, "Include properties: ");
+//            for (String prop :
+//                    cfg.getIncludeProperties()) {
+//                U.quiet(false, prop);
+//            }
+//            U.quiet(false, "Include types: ");
+//            for (int type :
+//                    cfg.getIncludeEventTypes()) {
+//                U.quiet(false, String.valueOf(type));
+//            }
+            U.quiet(false, "Long query warning timeout: " + cfg.getLongQueryWarningTimeout());
+            U.quiet(false, "Management thread pool size: " + cfg.getManagementThreadPoolSize());
+            U.quiet(false, "Metrics expire time: " + cfg.getMetricsExpireTime());
+            U.quiet(false, "Metrics history size: " + cfg.getMetricsHistorySize());
+            U.quiet(false, "Frequency of metrics log print out: " + cfg.getMetricsLogFrequency());
+            U.quiet(false, "Metrics update frequency in milliseconds: " + cfg.getMetricsUpdateFrequency());
+            U.quiet(false, "Message send retries count: " + cfg.getNetworkSendRetryCount());
+            U.quiet(false, "Interval between message send retries: " + cfg.getNetworkSendRetryDelay());
+            U.quiet(false, "Maximum timeout for network requests: " + cfg.getNetworkTimeout());
+            U.quiet(false, "Thread pool size to be used for peer class loading: "
+                    + cfg.getPeerClassLoadingThreadPoolSize());
+            U.quiet(false, "Thread pool size to be used in grid: " + cfg.getPublicThreadPoolSize());
+            U.quiet(false, "Thread pool size to be used in grid for query messages: " + cfg.getQueryThreadPoolSize());
+            U.quiet(false, "Max count of threads can be used at rebalancing: " + cfg.getRebalanceThreadPoolSize());
+            U.quiet(false, "Segmentation resolve attempts: " + cfg.getSegmentationResolveAttempts());
+            U.quiet(false, "Striped pool size that should be used for cache requests processing: "
+                    + cfg.getStripedPoolSize());
+            U.quiet(false, "Thread pool size to be used in grid for internal system messages: "
+                    + cfg.getSystemThreadPoolSize());
+            U.quiet(false, "Time server port base: " + cfg.getTimeServerPortBase());
+            U.quiet(false, "Thread pool keep alive time (in milliseconds) to be used in grid for utility cache messages"
+                    + cfg.getUtilityCacheKeepAliveTime());
+            U.quiet(false, "Default thread pool size to be used in grid for utility cache messages: "
+                    + cfg.getUtilityCacheThreadPoolSize());
         }
     }
 
