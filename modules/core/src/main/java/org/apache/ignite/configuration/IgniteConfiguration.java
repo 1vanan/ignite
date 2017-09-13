@@ -2323,7 +2323,7 @@ public class IgniteConfiguration {
      * <p>
      * Time server provides clock synchronization between nodes.
      *
-     * @return Time
+     * @return Time server port base
      */
     public int getTimeServerPortBase() {
         return timeSrvPortBase;
