@@ -2196,16 +2196,33 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         Field[] allFields = IgniteConfiguration.class.getDeclaredFields();
 
         if (log.isInfoEnabled()) {
-            for (Field field:
-                 allFields) {
+            for (Field field :
+                    allFields) {
                 log.info(field.getName());
             }
 
-        if (log.isQuiet()) {
-            for (Field field:
-                 allFields) {
-                U.quiet(false, field.getName());
+            if (log.isQuiet()) {
+                for (Field field :
+                        allFields) {
+                    U.quiet(false, field);
+                }
             }
+        }
+    }
+
+    /**
+     * Logs out language runtime.
+     */
+    private void ackLanguageRuntime() {
+        assert log != null;
+
+        if (log.isQuiet())
+            U.quiet(false, "VM information: " + U.jdkString());
+
+        if (log.isInfoEnabled()) {
+            log.info("Language runtime: " + getLanguage());
+            log.info("VM information: " + U.jdkString());
+            log.info("VM total memory: " + U.heapSize(2) + "GB");
         }
     }
 
