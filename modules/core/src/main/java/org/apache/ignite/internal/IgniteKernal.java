@@ -29,6 +29,7 @@ import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -810,6 +811,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         ackCacheConfiguration();
         ackP2pConfiguration();
         ackRebalanceConfiguration();
+        ackIgniteConfigurationInfo();
 
         // Run background network diagnostics.
         GridDiagnostic.runBackgroundCheck(igniteInstanceName, execSvc, log);
@@ -2499,6 +2501,37 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
                 throw new IgniteCheckedException("Rebalance batches prefetch count minimal allowed value is 1. " +
                     "Change CacheConfiguration.rebalanceBatchesPrefetchCount property before next start. " +
                     "[cache=" + ccfg.getName() + "]");
+        }
+    }
+
+    /**
+     *Log fields and values of IgniteConfiguration class.
+     */
+    private void ackIgniteConfigurationInfo(){
+
+        Field[] allFields = IgniteConfiguration.class.getDeclaredFields();
+
+
+        if (log.isInfoEnabled()) {
+            for (Field field :
+                    allFields) {
+                try {
+                    log.info(field.getName() + ": " + field.get(cfg));
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if (log.isQuiet()) {
+            for (Field field :
+                    allFields) {
+                try {
+                    U.quiet(false, field.getName() + ": " + field.get(cfg));
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
