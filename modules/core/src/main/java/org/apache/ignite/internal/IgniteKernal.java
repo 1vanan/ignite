@@ -799,6 +799,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         // Ack various information.
         ackAsciiLogo();
         ackConfigUrl();
+        ackIgniteConfigurationInfo();
         ackDaemon();
         ackOsInfo();
         ackLanguageRuntime();
@@ -811,7 +812,6 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         ackCacheConfiguration();
         ackP2pConfiguration();
         ackRebalanceConfiguration();
-        ackIgniteConfigurationInfo();
 
         // Run background network diagnostics.
         GridDiagnostic.runBackgroundCheck(igniteInstanceName, execSvc, log);
@@ -2505,31 +2505,29 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
     }
 
     /**
-     *Log fields and values of IgniteConfiguration class.
+     *Logs the fields and the values of the used IgniteConfiguration instance.
      */
     private void ackIgniteConfigurationInfo(){
-
-        Field[] allFields = IgniteConfiguration.class.getDeclaredFields();
-
+        Field[] fields = IgniteConfiguration.class.getDeclaredFields();
 
         if (log.isInfoEnabled()) {
             for (Field field :
-                    allFields) {
+                    fields) {
                 try {
-                    log.info(field.getName() + ": " + field.get(cfg));
+                    log.info(String.format("[%s] : [%s]", field.getName(), field.get(cfg)));
                 } catch (IllegalAccessException e) {
-                    e.printStackTrace();
+                    throw new IgniteException("Failed to access field for getting value.", e);
                 }
             }
         }
 
         if (log.isQuiet()) {
             for (Field field :
-                    allFields) {
+                    fields) {
                 try {
-                    U.quiet(false, field.getName() + ": " + field.get(cfg));
+                    U.quiet(false, String.format("[%s] : [%s]", field.getName(), field.get(cfg)));
                 } catch (IllegalAccessException e) {
-                    e.printStackTrace();
+                    throw new IgniteException("Failed to access field for getting value.", e);
                 }
             }
         }
