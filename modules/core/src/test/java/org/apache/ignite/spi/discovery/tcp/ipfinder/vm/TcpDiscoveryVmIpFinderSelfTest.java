@@ -125,6 +125,23 @@ public class TcpDiscoveryVmIpFinderSelfTest
     /**
      * @throws Exception If any error occurs.
      */
+    public void testWrongIpAddressesSetting() throws Exception {
+        Boolean wrongIpAddressWasAdded;
+        long executionTime;
+        long windowsTcpTimeout = 2200;
+        long timeBefore = System.currentTimeMillis();
+
+        finder.setAddresses(Arrays.asList("[::1]:45555", "8.8.8.8", "527.0.0.1", "some-dns-name1:200"));
+
+        executionTime = System.currentTimeMillis() - timeBefore;
+        wrongIpAddressWasAdded = executionTime >= windowsTcpTimeout;
+
+        assertTrue(wrongIpAddressWasAdded);
+    }
+
+    /**
+     * @throws Exception If any error occurs.
+     */
     public void testIpV6AddressesInitialization() throws Exception {
         TcpDiscoveryVmIpFinder finder = ipFinder();
 
