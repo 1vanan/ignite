@@ -28,6 +28,7 @@ import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.resources.LoggerResource;
 import org.apache.ignite.spi.IgniteSpiConfiguration;
 import org.apache.ignite.spi.IgniteSpiException;
@@ -133,14 +134,22 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
      */
     @IgniteSpiConfiguration(optional = true)
     public synchronized TcpDiscoveryVmIpFinder setAddresses(Collection<String> addrs) throws IgniteSpiException {
+        boolean firstWrongWarning = true;
         if (F.isEmpty(addrs))
             return this;
 
         Collection<InetSocketAddress> newAddrs = new LinkedHashSet<>();
 
-        for (String ipStr : addrs)
+        for (String ipStr : addrs) {
+            long before = System.currentTimeMillis();
             newAddrs.addAll(address(ipStr));
-
+            if(System.currentTimeMillis() - before > 2000 && firstWrongWarning && U.isWindows()) {
+                U.quiet(true, String.format("[WARNING]: Wrong ip address in Windows OS [%s]." +
+                        " Connection can take a lot of time. If there are any other addresses, " +
+                        "check your address list in ipFinder.", ipStr));
+                firstWrongWarning = false;
+            }
+        }
         this.addrs = newAddrs;
 
         return this;
