@@ -135,6 +135,7 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
     @IgniteSpiConfiguration(optional = true)
     public synchronized TcpDiscoveryVmIpFinder setAddresses(Collection<String> addrs) throws IgniteSpiException {
         long windowsTcpTimeoutMillis = 2200;
+
         boolean firstWrongWarning = true;
         boolean isWindowsTcpTimeout;
         if (F.isEmpty(addrs))
@@ -143,13 +144,18 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
         Collection<InetSocketAddress> newAddrs = new LinkedHashSet<>();
 
         for (String ipStr : addrs) {
+
             long timeBefore = System.currentTimeMillis();
+
             newAddrs.addAll(address(ipStr));
+
             isWindowsTcpTimeout = System.currentTimeMillis() - timeBefore > windowsTcpTimeoutMillis;
+
             if(isWindowsTcpTimeout && firstWrongWarning && U.isWindows()) {
                 U.quiet(true, String.format("[WARNING]: Wrong ip address in Windows OS [%s]." +
                         " Connection can take a lot of time. If there are any other addresses, " +
                         "check your address list in ipFinder.", ipStr));
+
                 firstWrongWarning = false;
             }
         }

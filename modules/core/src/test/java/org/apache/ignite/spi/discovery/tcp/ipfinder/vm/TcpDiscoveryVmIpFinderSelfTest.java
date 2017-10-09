@@ -124,6 +124,8 @@ public class TcpDiscoveryVmIpFinderSelfTest
 
     /**
      * @throws Exception If any error occurs.
+     * Fail if execution time of setAddresses is more than TCP timeout on Windows OS when one or more wrong
+     * address was added.
      */
     public void testWrongIpAddressesSetting() throws Exception {
         Boolean wrongIpAddressWasAdded;
