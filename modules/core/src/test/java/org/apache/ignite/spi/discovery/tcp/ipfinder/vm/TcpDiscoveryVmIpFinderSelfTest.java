@@ -123,12 +123,13 @@ public class TcpDiscoveryVmIpFinderSelfTest
     }
 
     /**
-     * @throws Exception If any error occurs.
      * Fail if execution time of setAddresses is more than TCP timeout on Windows OS when one or more wrong
      * address was added.
+     * @throws Exception If any error occurs.
      */
     public void testWrongIpAddressesSetting() throws Exception {
         Boolean wrongIpAddressWasAdded;
+
         long executionTime;
         long windowsTcpTimeout = 2200;
         long timeBefore = System.currentTimeMillis();

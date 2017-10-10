@@ -144,7 +144,6 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
         Collection<InetSocketAddress> newAddrs = new LinkedHashSet<>();
 
         for (String ipStr : addrs) {
-
             long timeBefore = System.currentTimeMillis();
 
             newAddrs.addAll(address(ipStr));
