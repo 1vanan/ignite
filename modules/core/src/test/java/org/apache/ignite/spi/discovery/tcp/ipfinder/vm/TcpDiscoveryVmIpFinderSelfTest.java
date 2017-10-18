@@ -123,26 +123,6 @@ public class TcpDiscoveryVmIpFinderSelfTest
     }
 
     /**
-     * Fail if execution time of setAddresses is more than TCP timeout on Windows OS when one or more wrong
-     * address was added.
-     * @throws Exception If any error occurs.
-     */
-    public void testWrongIpAddressesSetting() throws Exception {
-        Boolean wrongIpAddressWasAdded;
-
-        long executionTime;
-        long windowsTcpTimeout = 2200;
-        long timeBefore = System.currentTimeMillis();
-
-        finder.setAddresses(Arrays.asList("[::1]:45555", "8.8.8.8", "527.0.0.1", "some-dns-name1:200"));
-
-        executionTime = System.currentTimeMillis() - timeBefore;
-        wrongIpAddressWasAdded = executionTime >= windowsTcpTimeout;
-
-        assertTrue(wrongIpAddressWasAdded);
-    }
-
-    /**
      * @throws Exception If any error occurs.
      */
     public void testIpV6AddressesInitialization() throws Exception {
