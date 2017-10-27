@@ -14,23 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-　
+
 package org.apache.ignite.spi.discovery.tcp.ipfinder.vm;
-　
+
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinderAbstractSelfTest;
 import org.apache.ignite.testframework.GridStringLogger;
 import org.apache.ignite.testframework.GridTestUtils;
-　
+
 /**
  * Test printing warning in setAddresses when there is at least one wrong ip address.
  */
 public class TcpDiscoveryVmIpFinderSetAddressesWarningTest
     extends TcpDiscoveryIpFinderAbstractSelfTest<TcpDiscoveryVmIpFinder> {
     private GridStringLogger strLog = new GridStringLogger();
-　
+
     /**
      * Constructor.
      *
@@ -39,25 +40,25 @@ public class TcpDiscoveryVmIpFinderSetAddressesWarningTest
     public TcpDiscoveryVmIpFinderSetAddressesWarningTest() throws Exception {
         // No-op.
     }
-　
+
     /** {@inheritDoc} */
     @Override protected TcpDiscoveryVmIpFinder ipFinder() {
         TcpDiscoveryVmIpFinder finder = new TcpDiscoveryVmIpFinder();
-　
+
         assert !finder.isShared() : "Ip finder should NOT be shared by default.";
-　
+
         return finder;
     }
-　
+
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String igniteInstanceName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(igniteInstanceName);
-　
+
 //        cfg.setGridLogger(strLog = new GridStringLogger());
-　
+
         return cfg;
     }
-　
+
     /**
      * Set several sddresses to ipFinder. Fail if it's at least one wrong address.
      *
@@ -65,18 +66,18 @@ public class TcpDiscoveryVmIpFinderSetAddressesWarningTest
      */
     public void testWrongIpAddressesSetting() throws Exception {
         String wrongAddr1 = "527.0.0.1:45555";
-　
+
         String wrongAddr2 = "some-dns-name";
-　
+
         GridTestUtils.setFieldValue(finder, "log", strLog);
-　
+
         finder.setAddresses(Arrays.asList(wrongAddr1, "8.8.8.8", wrongAddr2, "127.0.0.1:"));
-　
+        System.out.println(finder.getRegisteredAddresses().iterator().next().getHostName());
         assertTrue(strLog.toString().contains(wrongAddr1));
-　
+
         assertTrue(!strLog.toString().contains(wrongAddr2));
     }
-　
+
     /**
      * Set address with several ports to ipFinder. Fail if it's at least one wrong address.
      *
@@ -84,14 +85,13 @@ public class TcpDiscoveryVmIpFinderSetAddressesWarningTest
      */
     public void testMultiWrongIpAddressesSetting() throws Exception {
         String wrongAddrMultiPort = "727.0.0.1:47500..47509";
-　
+
         GridTestUtils.setFieldValue(finder, "log", strLog);
-　
+
         finder.setAddresses(Collections.singleton(wrongAddrMultiPort));
-　
+
         assertTrue(strLog.toString().contains("727.0.0.1:47500"));
-　
+
         assertTrue(!strLog.toString().contains("727.0.0.1:47501"));
     }
 }
-　
