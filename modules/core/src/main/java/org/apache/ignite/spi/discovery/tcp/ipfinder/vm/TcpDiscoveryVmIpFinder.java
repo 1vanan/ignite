@@ -50,7 +50,7 @@ import static org.apache.ignite.IgniteSystemProperties.IGNITE_TCP_DISCOVERY_ADDR
  *      <li>Shared flag (see {@link #setShared(boolean)})</li>
  * </ul>
  */
-public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
+public class  TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
     /** Grid logger. */
     @LoggerResource
     private IgniteLogger log;
@@ -59,8 +59,8 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
     @GridToStringInclude
     private Collection<InetSocketAddress> addrs;
 
-    /** True if there are no wrong ip address or at least one. */
-    private boolean firstWrongAddr = true;
+    /** True if there are no wrong ip address. */
+    private boolean noWrongAddrBefore = true;
 
     /**
      * Initialize from system property.
@@ -189,10 +189,9 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
         }
 
         InetSocketAddress inetSockAddr = new InetSocketAddress(ipStr, 0);
-        if (U.isWindows() && inetSockAddr.isUnresolved() && firstWrongAddr) {
-            logWrongAddress(inetSockAddr);
-            firstWrongAddr = false;
-        }
+
+        noWrongAddrBefore = !isLoggingOfWrongAddressFirst(inetSockAddr);
+
         // Provided address does not contain port (will use default one).
         return Collections.singleton(inetSockAddr);
     }
@@ -229,10 +228,8 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
                     for (int i = port1; i <= port2; i++) {
                         InetSocketAddress inetSockAddr = new InetSocketAddress(addrStr, i);
                         res.add(inetSockAddr);
-                        if (U.isWindows() && inetSockAddr.isUnresolved() && firstWrongAddr) {
-                            logWrongAddress(inetSockAddr);
-                            firstWrongAddr = false;
-                        }
+
+                        noWrongAddrBefore = !isLoggingOfWrongAddressFirst(inetSockAddr);
                     }
                     return res;
                 }
@@ -244,10 +241,9 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
                 try {
                     int port = Integer.parseInt(portStr);
                     InetSocketAddress inetSockAddr = new InetSocketAddress(addrStr, port);
-                    if (U.isWindows() && inetSockAddr.isUnresolved() && firstWrongAddr) {
-                        logWrongAddress(inetSockAddr);
-                        firstWrongAddr = false;
-                    }
+
+                    noWrongAddrBefore = !isLoggingOfWrongAddressFirst(inetSockAddr);
+
                     return Collections.singleton(inetSockAddr);
                 }
                 catch (IllegalArgumentException e) {
@@ -259,12 +255,20 @@ public class TcpDiscoveryVmIpFinder extends TcpDiscoveryIpFinderAdapter {
             throw new IgniteSpiException(errMsg);
     }
 
-    /** {@inheritDoc} */
-    public void logWrongAddress(InetSocketAddress wrongInetSockAddr) {
-        log.warning(String.format("Wrong ip address in Windows OS [%s]." +
-            " Connection can take a lot of time. If there are any other addresses, " +
-            "check your address list in ipFinder.", wrongInetSockAddr.getHostName() + ":"
-            + wrongInetSockAddr.getPort()));
+    /**
+     * Logging information about wrong socket address if it's necessary.
+     *
+     * @param wrongInetSockAddr InetSocketAddress that can be wrong..
+     */
+    private boolean isLoggingOfWrongAddressFirst(InetSocketAddress wrongInetSockAddr) {
+        if (U.isWindows() && wrongInetSockAddr.isUnresolved() && noWrongAddrBefore) {
+            log.warning(String.format("Wrong ip address in Windows OS [%s]." +
+                    " Connection can take a lot of time. If there are any other addresses, " +
+                    "check your address list in ipFinder.", wrongInetSockAddr.getHostName() + ":"
+                    + wrongInetSockAddr.getPort()));
+
+            return true;
+        } else return !noWrongAddrBefore;
     }
 
     /** {@inheritDoc} */
