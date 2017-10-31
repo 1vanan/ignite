@@ -31,9 +31,7 @@ import org.apache.ignite.testframework.GridTestUtils;
  */
 public class TcpDiscoveryVmIpFinderSetAddressesWarningTest
         extends TcpDiscoveryIpFinderAbstractSelfTest<TcpDiscoveryVmIpFinder> {
-    /**
-     * String logger.
-     */
+    /** String logger.*/
     private GridStringLogger strLog = new GridStringLogger();
 
     /**
@@ -45,9 +43,7 @@ public class TcpDiscoveryVmIpFinderSetAddressesWarningTest
         // No-op.
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc}*/
     @Override protected TcpDiscoveryVmIpFinder ipFinder() {
         TcpDiscoveryVmIpFinder finder = new TcpDiscoveryVmIpFinder();
 
