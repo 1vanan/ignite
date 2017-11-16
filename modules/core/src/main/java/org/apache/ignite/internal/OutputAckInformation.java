@@ -49,11 +49,11 @@ import static org.apache.ignite.internal.IgniteVersionUtils.VER_STR;
 /**
  *
  */
-public class OutputVariousInformation {
+public class OutputAckInformation {
     /**
      * @param log Logger.
      */
-    OutputVariousInformation(IgniteLogger log, IgniteConfiguration cfg) {
+    OutputAckInformation(IgniteLogger log, IgniteConfiguration cfg) {
         this.cfg = cfg;
 
         this.log = log;
@@ -87,31 +87,31 @@ public class OutputVariousInformation {
             // Font name "Small Slant"
             if (log.isInfoEnabled()) {
                 log.info(NL + NL +
-                        ">>>    __________  ________________  " + NL +
-                        ">>>   /  _/ ___/ |/ /  _/_  __/ __/  " + NL +
-                        ">>>  _/ // (7 7    // /  / / / _/    " + NL +
-                        ">>> /___/\\___/_/|_/___/ /_/ /___/   " + NL +
-                        ">>> " + NL +
-                        ">>> " + ver + NL +
-                        ">>> " + COPYRIGHT + NL +
-                        ">>> " + NL +
-                        ">>> Ignite documentation: " + "http://" + SITE + NL
+                    ">>>    __________  ________________  " + NL +
+                    ">>>   /  _/ ___/ |/ /  _/_  __/ __/  " + NL +
+                    ">>>  _/ // (7 7    // /  / / / _/    " + NL +
+                    ">>> /___/\\___/_/|_/___/ /_/ /___/   " + NL +
+                    ">>> " + NL +
+                    ">>> " + ver + NL +
+                    ">>> " + COPYRIGHT + NL +
+                    ">>> " + NL +
+                    ">>> Ignite documentation: " + "http://" + SITE + NL
                 );
             }
 
             if (log.isQuiet()) {
                 U.quiet(false,
-                        "   __________  ________________ ",
-                        "  /  _/ ___/ |/ /  _/_  __/ __/ ",
-                        " _/ // (7 7    // /  / / / _/   ",
-                        "/___/\\___/_/|_/___/ /_/ /___/  ",
-                        "",
-                        ver,
-                        COPYRIGHT,
-                        "",
-                        "Ignite documentation: " + "http://" + SITE,
-                        "",
-                        "Quiet mode.");
+                    "   __________  ________________ ",
+                    "  /  _/ ___/ |/ /  _/_  __/ __/ ",
+                    " _/ // (7 7    // /  / / / _/   ",
+                    "/___/\\___/_/|_/___/ /_/ /___/  ",
+                    "",
+                    ver,
+                    COPYRIGHT,
+                    "",
+                    "Ignite documentation: " + "http://" + SITE,
+                    "",
+                    "Quiet mode.");
 
                 String fileName = log.fileName();
 
@@ -119,8 +119,8 @@ public class OutputVariousInformation {
                     U.quiet(false, "  ^-- Logging to file '" + fileName + '\'');
 
                 U.quiet(false,
-                        "  ^-- To see **FULL** console log here add -DIGNITE_QUIET=false or \"-v\" to ignite.{sh|bat}",
-                        "");
+                    "  ^-- To see **FULL** console log here add -DIGNITE_QUIET=false or \"-v\" to ignite.{sh|bat}",
+                    "");
             }
         }
     }
@@ -207,7 +207,7 @@ public class OutputVariousInformation {
             // By default SSL is enabled, that's why additional check for null is needed.
             // See http://docs.oracle.com/javase/6/docs/technotes/guides/management/agent.html
             sb.a("ssl: ").a(onOff(Boolean.getBoolean("com.sun.management.jmxremote.ssl") ||
-                    System.getProperty("com.sun.management.jmxremote.ssl") == null));
+                System.getProperty("com.sun.management.jmxremote.ssl") == null));
         }
 
         sb.a(")");
@@ -279,8 +279,8 @@ public class OutputVariousInformation {
             return;
 
         U.log(log, "System cache's MemoryPolicy size is configured to " +
-                (memCfg.getSystemCacheInitialSize() / (1024 * 1024)) + " MB. " +
-                "Use MemoryConfiguration.systemCacheMemorySize property to change the setting.");
+            (memCfg.getSystemCacheInitialSize() / (1024 * 1024)) + " MB. " +
+            "Use MemoryConfiguration.systemCacheMemorySize property to change the setting.");
     }
 
     /**
@@ -307,7 +307,7 @@ public class OutputVariousInformation {
                     memPlcName = cfg.getMemoryConfiguration().getDefaultMemoryPolicyName();
 
                 if (!memPlcNamesMapping.containsKey(memPlcName))
-                    memPlcNamesMapping.put(memPlcName, new ArrayList<String>());
+                    memPlcNamesMapping.put(memPlcName, new ArrayList<>());
 
                 ArrayList<String> cacheNames = memPlcNamesMapping.get(memPlcName);
 
@@ -335,10 +335,10 @@ public class OutputVariousInformation {
 
         if (cfg.isPeerClassLoadingEnabled())
             U.warn(
-                    log,
-                    "Peer class loading is enabled (disable it in production for performance and " +
-                            "deployment consistency reasons)",
-                    "Peer class loading is enabled (disable it for better performance)"
+                log,
+                "Peer class loading is enabled (disable it in production for performance and " +
+                    "deployment consistency reasons)",
+                "Peer class loading is enabled (disable it for better performance)"
             );
     }
 
@@ -348,17 +348,17 @@ public class OutputVariousInformation {
     void ackRebalanceConfiguration() throws IgniteCheckedException {
         if (cfg.getSystemThreadPoolSize() <= cfg.getRebalanceThreadPoolSize())
             throw new IgniteCheckedException("Rebalance thread pool size exceed or equals System thread pool size. " +
-                    "Change IgniteConfiguration.rebalanceThreadPoolSize property before next start.");
+                "Change IgniteConfiguration.rebalanceThreadPoolSize property before next start.");
 
         if (cfg.getRebalanceThreadPoolSize() < 1)
             throw new IgniteCheckedException("Rebalance thread pool size minimal allowed value is 1. " +
-                    "Change IgniteConfiguration.rebalanceThreadPoolSize property before next start.");
+                "Change IgniteConfiguration.rebalanceThreadPoolSize property before next start.");
 
         for (CacheConfiguration ccfg : cfg.getCacheConfiguration()) {
             if (ccfg.getRebalanceBatchesPrefetchCount() < 1)
                 throw new IgniteCheckedException("Rebalance batches prefetch count minimal allowed value is 1. " +
-                        "Change CacheConfiguration.rebalanceBatchesPrefetchCount property before next start. " +
-                        "[cache=" + ccfg.getName() + "]");
+                    "Change CacheConfiguration.rebalanceBatchesPrefetchCount property before next start. " +
+                    "[cache=" + ccfg.getName() + "]");
         }
     }
 
@@ -401,7 +401,7 @@ public class OutputVariousInformation {
         assert log != null;
 
         U.quietAndInfo(log, "Security status [authentication=" + onOff(ctx.security().enabled())
-                + ", tls/ssl=" + onOff(ctx.config().getSslContextFactory() != null) + ']');
+            + ", tls/ssl=" + onOff(ctx.config().getSslContextFactory() != null) + ']');
     }
 
     /**
@@ -417,7 +417,7 @@ public class OutputVariousInformation {
         if (log.isQuiet()) {
             U.quiet(false, "");
             U.quiet(false, "Ignite node started OK (id=" + U.id8(locNode.id()) +
-                    (F.isEmpty(igniteInstanceName) ? "" : ", instance name=" + igniteInstanceName) + ')');
+                (F.isEmpty(igniteInstanceName) ? "" : ", instance name=" + igniteInstanceName) + ')');
         }
 
         if (log.isInfoEnabled()) {
@@ -433,21 +433,21 @@ public class OutputVariousInformation {
                 sb.a(rec.protocol()).a(":").a(rec.port()).a(" ");
 
             String str =
-                    NL + NL +
-                            ">>> " + dash + NL +
-                            ">>> " + ack + NL +
-                            ">>> " + dash + NL +
-                            ">>> OS name: " + U.osString() + NL +
-                            ">>> CPU(s): " + locNode.metrics().getTotalCpus() + NL +
-                            ">>> Heap: " + U.heapSize(locNode, 2) + "GB" + NL +
-                            ">>> VM name: " + rtBean.getName() + NL +
-                            (igniteInstanceName == null ? "" : ">>> Ignite instance name: " + igniteInstanceName + NL) +
-                            ">>> Local node [" +
-                            "ID=" + locNode.id().toString().toUpperCase() +
-                            ", order=" + locNode.order() + ", clientMode=" + ctx.clientNode() +
-                            "]" + NL +
-                            ">>> Local node addresses: " + U.addressesAsString(locNode) + NL +
-                            ">>> Local ports: " + sb + NL;
+                NL + NL +
+                    ">>> " + dash + NL +
+                    ">>> " + ack + NL +
+                    ">>> " + dash + NL +
+                    ">>> OS name: " + U.osString() + NL +
+                    ">>> CPU(s): " + locNode.metrics().getTotalCpus() + NL +
+                    ">>> Heap: " + U.heapSize(locNode, 2) + "GB" + NL +
+                    ">>> VM name: " + rtBean.getName() + NL +
+                    (igniteInstanceName == null ? "" : ">>> Ignite instance name: " + igniteInstanceName + NL) +
+                    ">>> Local node [" +
+                    "ID=" + locNode.id().toString().toUpperCase() +
+                    ", order=" + locNode.order() + ", clientMode=" + ctx.clientNode() +
+                    "]" + NL +
+                    ">>> Local node addresses: " + U.addressesAsString(locNode) + NL +
+                    ">>> Local ports: " + sb + NL;
 
             log.info(str);
         }
@@ -470,8 +470,8 @@ public class OutputVariousInformation {
         assert cfg != null;
 
         return cfg.getConnectorConfiguration() != null &&
-                // By default rest processor doesn't start on client nodes.
-                (!isClientNode() || (isClientNode() && IgniteSystemProperties.getBoolean(IGNITE_REST_START_ON_CLIENT)));
+            // By default rest processor doesn't start on client nodes.
+            (!isClientNode() || (isClientNode() && IgniteSystemProperties.getBoolean(IGNITE_REST_START_ON_CLIENT)));
     }
 
     /**
