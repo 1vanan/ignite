@@ -307,7 +307,7 @@ public class OutputAckInformation {
                     memPlcName = cfg.getMemoryConfiguration().getDefaultMemoryPolicyName();
 
                 if (!memPlcNamesMapping.containsKey(memPlcName))
-                    memPlcNamesMapping.put(memPlcName, new ArrayList<>());
+                    memPlcNamesMapping.put(memPlcName, new ArrayList<String>());
 
                 ArrayList<String> cacheNames = memPlcNamesMapping.get(memPlcName);
 
