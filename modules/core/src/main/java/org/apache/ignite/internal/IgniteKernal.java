@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -89,7 +88,6 @@ import org.apache.ignite.configuration.BinaryConfiguration;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.CollectionConfiguration;
 import org.apache.ignite.configuration.ConnectorConfiguration;
-import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.MemoryConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
@@ -142,7 +140,6 @@ import org.apache.ignite.internal.processors.platform.plugin.PlatformPluginProce
 import org.apache.ignite.internal.processors.plugin.IgnitePluginProcessor;
 import org.apache.ignite.internal.processors.pool.PoolProcessor;
 import org.apache.ignite.internal.processors.port.GridPortProcessor;
-import org.apache.ignite.internal.processors.port.GridPortRecord;
 import org.apache.ignite.internal.processors.query.GridQueryProcessor;
 import org.apache.ignite.internal.processors.resource.GridResourceProcessor;
 import org.apache.ignite.internal.processors.resource.GridSpringResourceContext;
@@ -196,11 +193,8 @@ import org.apache.ignite.thread.IgniteStripedThreadPoolExecutor;
 import org.jetbrains.annotations.Nullable;
 
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_BINARY_MARSHALLER_USE_STRING_SERIALIZATION_VER_2;
-import static org.apache.ignite.IgniteSystemProperties.IGNITE_CONFIG_URL;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_DAEMON;
-import static org.apache.ignite.IgniteSystemProperties.IGNITE_NO_ASCII;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_OPTIMIZED_MARSHALLER_USE_DEFAULT_SUID;
-import static org.apache.ignite.IgniteSystemProperties.IGNITE_REST_START_ON_CLIENT;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_SKIP_CONFIGURATION_CONSISTENCY_CHECK;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_STARVATION_CHECK_INTERVAL;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_SUCCESS_FILE;
@@ -247,7 +241,6 @@ import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_REST_PORT_RAN
 import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_SPI_CLASS;
 import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_TX_CONFIG;
 import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_USER_NAME;
-import static org.apache.ignite.internal.IgniteVersionUtils.ACK_VER_STR;
 import static org.apache.ignite.internal.IgniteVersionUtils.BUILD_TSTAMP_STR;
 import static org.apache.ignite.internal.IgniteVersionUtils.COPYRIGHT;
 import static org.apache.ignite.internal.IgniteVersionUtils.REV_HASH_STR;
@@ -285,8 +278,8 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
     /** Configuration. */
     private IgniteConfiguration cfg;
 
-    /** Various information on output. */
-    OutputAckInformation variousInformation;
+    /** Ack information on output. */
+    OutputAckInformation info;
 
     /** */
     @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
@@ -806,23 +799,23 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
 
         RuntimeMXBean rtBean = ManagementFactory.getRuntimeMXBean();
 
-        variousInformation = new OutputAckInformation(log, cfg);
+        info = new OutputAckInformation(log, cfg);
 
         // Ack various information.
-        variousInformation.ackAsciiLogo();
-        variousInformation.ackConfigUrl();
-        variousInformation.ackDaemon(isDaemon());
-        variousInformation.ackOsInfo();
-        variousInformation.ackLanguageRuntime(getLanguage());
-        variousInformation.ackRemoteManagement(isJmxRemoteEnabled(), isRestartEnabled());
-        variousInformation.ackVmArguments(rtBean);
-        variousInformation.ackClassPaths(rtBean);
-        variousInformation.ackSystemProperties();
-        variousInformation.ackEnvironmentVariables();
-        variousInformation.ackMemoryConfiguration();
-        variousInformation.ackCacheConfiguration();
-        variousInformation.ackP2pConfiguration();
-        variousInformation.ackRebalanceConfiguration();
+        info.ackAsciiLogo();
+        info.ackConfigUrl();
+        info.ackDaemon(isDaemon());
+        info.ackOsInfo();
+        info.ackLanguageRuntime(getLanguage());
+        info.ackRemoteManagement(isJmxRemoteEnabled(), isRestartEnabled());
+        info.ackVmArguments(rtBean);
+        info.ackClassPaths(rtBean);
+        info.ackSystemProperties();
+        info.ackEnvironmentVariables();
+        info.ackMemoryConfiguration();
+        info.ackCacheConfiguration();
+        info.ackP2pConfiguration();
+        info.ackRebalanceConfiguration();
 
         // Run background network diagnostics.
         GridDiagnostic.runBackgroundCheck(igniteInstanceName, execSvc, log);
@@ -840,10 +833,10 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
                     "starting with '" + ATTR_PREFIX + "' are reserved for internal use.");
 
         // Ack local node user attributes.
-        variousInformation.logNodeUserAttributes();
+        info.logNodeUserAttributes();
 
         // Ack configuration.
-        variousInformation.ackSpis();
+        info.ackSpis();
 
         List<PluginProvider> plugins = U.allPluginProviders();
 
@@ -939,7 +932,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
             startManager(new GridCollisionManager(ctx));
             startManager(new GridIndexingManager(ctx));
 
-            variousInformation.ackSecurity(ctx);
+            info.ackSecurity(ctx);
 
             // Assign discovery manager to context before other processors start so they
             // are able to register custom event listener.
@@ -1317,7 +1310,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
 
         U.quietAndInfo(log, "To start Console Management & Monitoring run ignitevisorcmd.{sh|bat}");
 
-        variousInformation.ackStart(rtBean, ctx);
+        info.ackStart(rtBean, ctx);
 
         if (!isDaemon())
             ctx.discovery().ackTopology(localNode().order());
@@ -1889,20 +1882,6 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
     }
 
     /**
-     * Gets "on" or "off" string for given boolean value.
-     *
-     * @param b Boolean value to convert.
-     * @return Result string.
-     */
-    private String onOff(boolean b) { return b ? "on" : "off"; }
-
-
-    /**
-     * @return {@code True} if node client or daemon otherwise {@code false}.
-     */
-    private boolean isClientNode() { return cfg.isClientMode() || cfg.isDaemon(); }
-
-    /**
      * @return Language runtime.
      */
     @SuppressWarnings("ThrowableInstanceNeverThrown")
@@ -2255,26 +2234,6 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         return System.getProperty(IGNITE_SUCCESS_FILE) != null;
     }
 
-    /**
-     * Prints all configuration properties in info mode and SPIs in debug mode.
-     */
-    private void ackSpis() {
-        assert log != null;
-
-        if (log.isDebugEnabled()) {
-            log.debug("+-------------+");
-            log.debug("START SPI LIST:");
-            log.debug("+-------------+");
-            log.debug("Grid checkpoint SPI     : " + Arrays.toString(cfg.getCheckpointSpi()));
-            log.debug("Grid collision SPI      : " + cfg.getCollisionSpi());
-            log.debug("Grid communication SPI  : " + cfg.getCommunicationSpi());
-            log.debug("Grid deployment SPI     : " + cfg.getDeploymentSpi());
-            log.debug("Grid discovery SPI      : " + cfg.getDiscoverySpi());
-            log.debug("Grid event storage SPI  : " + cfg.getEventStorageSpi());
-            log.debug("Grid failover SPI       : " + Arrays.toString(cfg.getFailoverSpi()));
-            log.debug("Grid load balancing SPI : " + Arrays.toString(cfg.getLoadBalancingSpi()));
-        }
-    }
 
     /**
      * @param cfg Grid configuration.
