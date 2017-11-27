@@ -49,11 +49,11 @@ import static org.apache.ignite.internal.IgniteVersionUtils.VER_STR;
 /**
  *
  */
-public class OutputAckInformation {
+class IgniteAckGenerator {
     /**
      * @param log Logger.
      */
-    OutputAckInformation(IgniteLogger log, IgniteConfiguration cfg) {
+    IgniteAckGenerator(IgniteLogger log, IgniteConfiguration cfg) {
         this.cfg = cfg;
 
         this.log = log;
@@ -70,9 +70,6 @@ public class OutputAckInformation {
 
     /** Ignite site that is shown in log messages. */
     private static final String SITE = "ignite.apache.org";
-
-    /** */
-    private String igniteInstanceName;
 
     /**
      * Acks ASCII-logo. Thanks to http://patorjk.com/software/taag
@@ -410,7 +407,7 @@ public class OutputAckInformation {
      * @param rtBean Java runtime bean.
      */
     void ackStart(RuntimeMXBean rtBean, GridKernalContextImpl ctx) {
-        igniteInstanceName = cfg.getIgniteInstanceName();
+        String igniteInstanceName = cfg.getIgniteInstanceName();
 
         ClusterNode locNode = ctx.cluster().get().localNode();
 
