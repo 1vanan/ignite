@@ -27,6 +27,7 @@ import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.MemoryConfiguration;
 import org.apache.ignite.internal.processors.port.GridPortRecord;
@@ -269,15 +270,21 @@ class IgniteAckGenerator {
     /**
      *
      */
-    void ackMemoryConfiguration() {
+    void ackDataStorageConfiguration() {
         MemoryConfiguration memCfg = cfg.getMemoryConfiguration();
 
-        if (memCfg == null)
+        DataStorageConfiguration dataStorageCfg = cfg.getDataStorageConfiguration();
+
+        if (memCfg != null)
+            U.warn(log, "Deprecated class MemoryConfiguration is used. Use DataStorageConfiguration class " +
+                "instead via IgniteConfiguration#setDataStorageConfiguration");
+
+        if(dataStorageCfg == null)
             return;
 
-        U.log(log, "System cache's MemoryPolicy size is configured to " +
-            (memCfg.getSystemCacheInitialSize() / (1024 * 1024)) + " MB. " +
-            "Use MemoryConfiguration.systemCacheMemorySize property to change the setting.");
+        U.log(log, "System size of a memory chunk reserved for system cache is configured to " +
+            (dataStorageCfg.getSystemRegionInitialSize() / (1024 * 1024)) + " MB. " +
+            "Use DataStorageConfiguration#sysRegionInitSize property to change the setting.");
     }
 
     /**
@@ -291,27 +298,27 @@ class IgniteAckGenerator {
         else {
             SB sb = new SB();
 
-            HashMap<String, ArrayList<String>> memPlcNamesMapping = new HashMap<>();
+            HashMap<String, ArrayList<String>> dataRegionNamesMapping = new HashMap<>();
 
             for (CacheConfiguration c : cacheCfgs) {
                 String cacheName = U.maskName(c.getName());
 
-                String memPlcName = c.getMemoryPolicyName();
+                String dataRegionName = c.getDataRegionName();
 
                 if (CU.isSystemCache(cacheName))
-                    memPlcName = "sysMemPlc";
-                else if (memPlcName == null && cfg.getMemoryConfiguration() != null)
-                    memPlcName = cfg.getMemoryConfiguration().getDefaultMemoryPolicyName();
+                    dataRegionName = "sysMemPlc";
+                else if (dataRegionName == null && cfg.getDataStorageConfiguration() != null)
+                    dataRegionName = DataStorageConfiguration.DFLT_DATA_REG_DEFAULT_NAME;
 
-                if (!memPlcNamesMapping.containsKey(memPlcName))
-                    memPlcNamesMapping.put(memPlcName, new ArrayList<String>());
+                if (!dataRegionNamesMapping.containsKey(dataRegionName))
+                    dataRegionNamesMapping.put(dataRegionName, new ArrayList<String>());
 
-                ArrayList<String> cacheNames = memPlcNamesMapping.get(memPlcName);
+                ArrayList<String> cacheNames = dataRegionNamesMapping.get(dataRegionName);
 
                 cacheNames.add(cacheName);
             }
 
-            for (Map.Entry<String, ArrayList<String>> e : memPlcNamesMapping.entrySet()) {
+            for (Map.Entry<String, ArrayList<String>> e : dataRegionNamesMapping.entrySet()) {
                 sb.a("in '").a(e.getKey()).a("' memoryPolicy: [");
 
                 for (String s : e.getValue())

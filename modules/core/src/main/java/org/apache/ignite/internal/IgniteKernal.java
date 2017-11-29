@@ -814,7 +814,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         info.ackClassPaths(rtBean);
         info.ackSystemProperties();
         info.ackEnvironmentVariables();
-        info.ackMemoryConfiguration();
+        info.ackDataStorageConfiguration();
         info.ackCacheConfiguration();
         info.ackP2pConfiguration();
         info.ackRebalanceConfiguration();
