@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -89,7 +88,6 @@ import org.apache.ignite.configuration.BinaryConfiguration;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.CollectionConfiguration;
 import org.apache.ignite.configuration.ConnectorConfiguration;
-import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.MemoryConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
@@ -142,7 +140,6 @@ import org.apache.ignite.internal.processors.platform.plugin.PlatformPluginProce
 import org.apache.ignite.internal.processors.plugin.IgnitePluginProcessor;
 import org.apache.ignite.internal.processors.pool.PoolProcessor;
 import org.apache.ignite.internal.processors.port.GridPortProcessor;
-import org.apache.ignite.internal.processors.port.GridPortRecord;
 import org.apache.ignite.internal.processors.query.GridQueryProcessor;
 import org.apache.ignite.internal.processors.resource.GridResourceProcessor;
 import org.apache.ignite.internal.processors.resource.GridSpringResourceContext;
@@ -197,11 +194,8 @@ import org.apache.ignite.thread.IgniteStripedThreadPoolExecutor;
 import org.jetbrains.annotations.Nullable;
 
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_BINARY_MARSHALLER_USE_STRING_SERIALIZATION_VER_2;
-import static org.apache.ignite.IgniteSystemProperties.IGNITE_CONFIG_URL;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_DAEMON;
-import static org.apache.ignite.IgniteSystemProperties.IGNITE_NO_ASCII;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_OPTIMIZED_MARSHALLER_USE_DEFAULT_SUID;
-import static org.apache.ignite.IgniteSystemProperties.IGNITE_REST_START_ON_CLIENT;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_SKIP_CONFIGURATION_CONSISTENCY_CHECK;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_STARVATION_CHECK_INTERVAL;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_SUCCESS_FILE;
@@ -248,7 +242,6 @@ import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_REST_PORT_RAN
 import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_SPI_CLASS;
 import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_TX_CONFIG;
 import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_USER_NAME;
-import static org.apache.ignite.internal.IgniteVersionUtils.ACK_VER_STR;
 import static org.apache.ignite.internal.IgniteVersionUtils.BUILD_TSTAMP_STR;
 import static org.apache.ignite.internal.IgniteVersionUtils.COPYRIGHT;
 import static org.apache.ignite.internal.IgniteVersionUtils.REV_HASH_STR;
@@ -808,21 +801,23 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
 
         RuntimeMXBean rtBean = ManagementFactory.getRuntimeMXBean();
 
+        IgniteAckGenerator info = new IgniteAckGenerator(log, cfg);
+
         // Ack various information.
-        ackAsciiLogo();
-        ackConfigUrl();
-        ackDaemon();
-        ackOsInfo();
-        ackLanguageRuntime();
-        ackRemoteManagement();
-        ackVmArguments(rtBean);
-        ackClassPaths(rtBean);
-        ackSystemProperties();
-        ackEnvironmentVariables();
-        ackMemoryConfiguration();
-        ackCacheConfiguration();
-        ackP2pConfiguration();
-        ackRebalanceConfiguration();
+        info.ackAsciiLogo();
+        info.ackConfigUrl();
+        info.ackDaemon(isDaemon());
+        info.ackOsInfo();
+        info.ackLanguageRuntime(getLanguage());
+        info.ackRemoteManagement(isJmxRemoteEnabled(), isRestartEnabled());
+        info.ackVmArguments(rtBean);
+        info.ackClassPaths(rtBean);
+        info.ackSystemProperties();
+        info.ackEnvironmentVariables();
+        info.ackDataStorageConfiguration();
+        info.ackCacheConfiguration();
+        info.ackP2pConfiguration();
+        info.ackRebalanceConfiguration();
 
         // Run background network diagnostics.
         GridDiagnostic.runBackgroundCheck(igniteInstanceName, execSvc, log);
@@ -840,10 +835,10 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
                     "starting with '" + ATTR_PREFIX + "' are reserved for internal use.");
 
         // Ack local node user attributes.
-        logNodeUserAttributes();
+        info.logNodeUserAttributes();
 
         // Ack configuration.
-        ackSpis();
+        info.ackSpis();
 
         List<PluginProvider> plugins = U.allPluginProviders();
 
@@ -939,7 +934,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
             startManager(new GridCollisionManager(ctx));
             startManager(new GridIndexingManager(ctx));
 
-            ackSecurity();
+            info.ackSecurity(ctx);
 
             // Assign discovery manager to context before other processors start so they
             // are able to register custom event listener.
@@ -1317,7 +1312,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
 
         U.quietAndInfo(log, "To start Console Management & Monitoring run ignitevisorcmd.{sh|bat}");
 
-        ackStart(rtBean);
+        info.ackStart(rtBean, ctx);
 
         if (!isDaemon())
             ctx.discovery().ackTopology(localNode().order());
@@ -1904,217 +1899,6 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
     }
 
     /**
-     * Gets "on" or "off" string for given boolean value.
-     *
-     * @param b Boolean value to convert.
-     * @return Result string.
-     */
-    private String onOff(boolean b) {
-        return b ? "on" : "off";
-    }
-
-    /**
-     *
-     * @return Whether or not REST is enabled.
-     */
-    private boolean isRestEnabled() {
-        assert cfg != null;
-
-        return cfg.getConnectorConfiguration() != null &&
-            // By default rest processor doesn't start on client nodes.
-            (!isClientNode() || (isClientNode() && IgniteSystemProperties.getBoolean(IGNITE_REST_START_ON_CLIENT)));
-    }
-
-    /**
-     * @return {@code True} if node client or daemon otherwise {@code false}.
-     */
-    private boolean isClientNode() {
-        return cfg.isClientMode() || cfg.isDaemon();
-    }
-
-    /**
-     * Acks remote management.
-     */
-    private void ackRemoteManagement() {
-        assert log != null;
-
-        if (!log.isInfoEnabled())
-            return;
-
-        SB sb = new SB();
-
-        sb.a("Remote Management [");
-
-        boolean on = isJmxRemoteEnabled();
-
-        sb.a("restart: ").a(onOff(isRestartEnabled())).a(", ");
-        sb.a("REST: ").a(onOff(isRestEnabled())).a(", ");
-        sb.a("JMX (");
-        sb.a("remote: ").a(onOff(on));
-
-        if (on) {
-            sb.a(", ");
-
-            sb.a("port: ").a(System.getProperty("com.sun.management.jmxremote.port", "<n/a>")).a(", ");
-            sb.a("auth: ").a(onOff(Boolean.getBoolean("com.sun.management.jmxremote.authenticate"))).a(", ");
-
-            // By default SSL is enabled, that's why additional check for null is needed.
-            // See http://docs.oracle.com/javase/6/docs/technotes/guides/management/agent.html
-            sb.a("ssl: ").a(onOff(Boolean.getBoolean("com.sun.management.jmxremote.ssl") ||
-                System.getProperty("com.sun.management.jmxremote.ssl") == null));
-        }
-
-        sb.a(")");
-
-        sb.a(']');
-
-        log.info(sb.toString());
-    }
-
-    /**
-     * Acks configuration URL.
-     */
-    private void ackConfigUrl() {
-        assert log != null;
-
-        if (log.isInfoEnabled())
-            log.info("Config URL: " + System.getProperty(IGNITE_CONFIG_URL, "n/a"));
-    }
-
-    /**
-     * Acks ASCII-logo. Thanks to http://patorjk.com/software/taag
-     */
-    private void ackAsciiLogo() {
-        assert log != null;
-
-        if (System.getProperty(IGNITE_NO_ASCII) == null) {
-            String ver = "ver. " + ACK_VER_STR;
-
-            // Big thanks to: http://patorjk.com/software/taag
-            // Font name "Small Slant"
-            if (log.isInfoEnabled()) {
-                log.info(NL + NL +
-                    ">>>    __________  ________________  " + NL +
-                    ">>>   /  _/ ___/ |/ /  _/_  __/ __/  " + NL +
-                    ">>>  _/ // (7 7    // /  / / / _/    " + NL +
-                    ">>> /___/\\___/_/|_/___/ /_/ /___/   " + NL +
-                    ">>> " + NL +
-                    ">>> " + ver + NL +
-                    ">>> " + COPYRIGHT + NL +
-                    ">>> " + NL +
-                    ">>> Ignite documentation: " + "http://" + SITE + NL
-                );
-            }
-
-            if (log.isQuiet()) {
-                U.quiet(false,
-                    "   __________  ________________ ",
-                    "  /  _/ ___/ |/ /  _/_  __/ __/ ",
-                    " _/ // (7 7    // /  / / / _/   ",
-                    "/___/\\___/_/|_/___/ /_/ /___/  ",
-                    "",
-                    ver,
-                    COPYRIGHT,
-                    "",
-                    "Ignite documentation: " + "http://" + SITE,
-                    "",
-                    "Quiet mode.");
-
-                String fileName = log.fileName();
-
-                if (fileName != null)
-                    U.quiet(false, "  ^-- Logging to file '" + fileName + '\'');
-
-                U.quiet(false,
-                    "  ^-- To see **FULL** console log here add -DIGNITE_QUIET=false or \"-v\" to ignite.{sh|bat}",
-                    "");
-            }
-        }
-    }
-
-    /**
-     * Prints start info.
-     *
-     * @param rtBean Java runtime bean.
-     */
-    private void ackStart(RuntimeMXBean rtBean) {
-        ClusterNode locNode = localNode();
-
-        if (log.isQuiet()) {
-            U.quiet(false, "");
-            U.quiet(false, "Ignite node started OK (id=" + U.id8(locNode.id()) +
-                (F.isEmpty(igniteInstanceName) ? "" : ", instance name=" + igniteInstanceName) + ')');
-        }
-
-        if (log.isInfoEnabled()) {
-            log.info("");
-
-            String ack = "Ignite ver. " + VER_STR + '#' + BUILD_TSTAMP_STR + "-sha1:" + REV_HASH_STR;
-
-            String dash = U.dash(ack.length());
-
-            SB sb = new SB();
-
-            for (GridPortRecord rec : ctx.ports().records())
-                sb.a(rec.protocol()).a(":").a(rec.port()).a(" ");
-
-            String str =
-                NL + NL +
-                    ">>> " + dash + NL +
-                    ">>> " + ack + NL +
-                    ">>> " + dash + NL +
-                    ">>> OS name: " + U.osString() + NL +
-                    ">>> CPU(s): " + locNode.metrics().getTotalCpus() + NL +
-                    ">>> Heap: " + U.heapSize(locNode, 2) + "GB" + NL +
-                    ">>> VM name: " + rtBean.getName() + NL +
-                    (igniteInstanceName == null ? "" : ">>> Ignite instance name: " + igniteInstanceName + NL) +
-                    ">>> Local node [" +
-                    "ID=" + locNode.id().toString().toUpperCase() +
-                    ", order=" + locNode.order() + ", clientMode=" + ctx.clientNode() +
-                    "]" + NL +
-                    ">>> Local node addresses: " + U.addressesAsString(locNode) + NL +
-                    ">>> Local ports: " + sb + NL;
-
-            log.info(str);
-        }
-    }
-
-    /**
-     * Logs out OS information.
-     */
-    private void ackOsInfo() {
-        assert log != null;
-
-        if (log.isQuiet())
-            U.quiet(false, "OS: " + U.osString());
-
-        if (log.isInfoEnabled()) {
-            log.info("OS: " + U.osString());
-            log.info("OS user: " + System.getProperty("user.name"));
-
-            int jvmPid = U.jvmPid();
-
-            log.info("PID: " + (jvmPid == -1 ? "N/A" : jvmPid));
-        }
-    }
-
-    /**
-     * Logs out language runtime.
-     */
-    private void ackLanguageRuntime() {
-        assert log != null;
-
-        if (log.isQuiet())
-            U.quiet(false, "VM information: " + U.jdkString());
-
-        if (log.isInfoEnabled()) {
-            log.info("Language runtime: " + getLanguage());
-            log.info("VM information: " + U.jdkString());
-            log.info("VM total memory: " + U.heapSize(2) + "GB");
-        }
-    }
-
-    /**
      * @return Language runtime.
      */
     @SuppressWarnings("ThrowableInstanceNeverThrown")
@@ -2434,49 +2218,6 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
     }
 
     /**
-     * Prints all system properties in debug mode.
-     */
-    private void ackSystemProperties() {
-        assert log != null;
-
-        if (log.isDebugEnabled() && S.INCLUDE_SENSITIVE)
-            for (Map.Entry<Object, Object> entry : snapshot().entrySet())
-                log.debug("System property [" + entry.getKey() + '=' + entry.getValue() + ']');
-    }
-
-    /**
-     * Prints all user attributes in info mode.
-     */
-    private void logNodeUserAttributes() {
-        assert log != null;
-
-        if (log.isInfoEnabled())
-            for (Map.Entry<?, ?> attr : cfg.getUserAttributes().entrySet())
-                log.info("Local node user attribute [" + attr.getKey() + '=' + attr.getValue() + ']');
-    }
-
-    /**
-     * Prints all environment variables in debug mode.
-     */
-    private void ackEnvironmentVariables() {
-        assert log != null;
-
-        if (log.isDebugEnabled())
-            for (Map.Entry<?, ?> envVar : System.getenv().entrySet())
-                log.debug("Environment variable [" + envVar.getKey() + '=' + envVar.getValue() + ']');
-    }
-
-    /**
-     * Acks daemon mode status.
-     */
-    private void ackDaemon() {
-        assert log != null;
-
-        if (log.isInfoEnabled())
-            log.info("Daemon mode: " + (isDaemon() ? "on" : "off"));
-    }
-
-    /**
      *
      * @return {@code True} is this node is daemon.
      */
@@ -2511,160 +2252,6 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         return System.getProperty(IGNITE_SUCCESS_FILE) != null;
     }
 
-    /**
-     * Prints all configuration properties in info mode and SPIs in debug mode.
-     */
-    private void ackSpis() {
-        assert log != null;
-
-        if (log.isDebugEnabled()) {
-            log.debug("+-------------+");
-            log.debug("START SPI LIST:");
-            log.debug("+-------------+");
-            log.debug("Grid checkpoint SPI     : " + Arrays.toString(cfg.getCheckpointSpi()));
-            log.debug("Grid collision SPI      : " + cfg.getCollisionSpi());
-            log.debug("Grid communication SPI  : " + cfg.getCommunicationSpi());
-            log.debug("Grid deployment SPI     : " + cfg.getDeploymentSpi());
-            log.debug("Grid discovery SPI      : " + cfg.getDiscoverySpi());
-            log.debug("Grid event storage SPI  : " + cfg.getEventStorageSpi());
-            log.debug("Grid failover SPI       : " + Arrays.toString(cfg.getFailoverSpi()));
-            log.debug("Grid load balancing SPI : " + Arrays.toString(cfg.getLoadBalancingSpi()));
-        }
-    }
-
-    /**
-     *
-     */
-    private void ackRebalanceConfiguration() throws IgniteCheckedException {
-        if (cfg.getSystemThreadPoolSize() <= cfg.getRebalanceThreadPoolSize())
-            throw new IgniteCheckedException("Rebalance thread pool size exceed or equals System thread pool size. " +
-                "Change IgniteConfiguration.rebalanceThreadPoolSize property before next start.");
-
-        if (cfg.getRebalanceThreadPoolSize() < 1)
-            throw new IgniteCheckedException("Rebalance thread pool size minimal allowed value is 1. " +
-                "Change IgniteConfiguration.rebalanceThreadPoolSize property before next start.");
-
-        for (CacheConfiguration ccfg : cfg.getCacheConfiguration()) {
-            if (ccfg.getRebalanceBatchesPrefetchCount() < 1)
-                throw new IgniteCheckedException("Rebalance batches prefetch count minimal allowed value is 1. " +
-                    "Change CacheConfiguration.rebalanceBatchesPrefetchCount property before next start. " +
-                    "[cache=" + ccfg.getName() + "]");
-        }
-    }
-
-    /**
-     *
-     */
-    private void ackMemoryConfiguration() {
-        DataStorageConfiguration memCfg = cfg.getDataStorageConfiguration();
-
-        if (memCfg == null)
-            return;
-
-        U.log(log, "System cache's DataRegion size is configured to " +
-            (memCfg.getSystemRegionInitialSize() / (1024 * 1024)) + " MB. " +
-            "Use DataStorageConfiguration.systemCacheMemorySize property to change the setting.");
-    }
-
-    /**
-     *
-     */
-    private void ackCacheConfiguration() {
-        CacheConfiguration[] cacheCfgs = cfg.getCacheConfiguration();
-
-        if (cacheCfgs == null || cacheCfgs.length == 0)
-            U.warn(log, "Cache is not configured - in-memory data grid is off.");
-        else {
-            SB sb = new SB();
-
-            HashMap<String, ArrayList<String>> memPlcNamesMapping = new HashMap<>();
-
-            for (CacheConfiguration c : cacheCfgs) {
-                String cacheName = U.maskName(c.getName());
-
-                String memPlcName = c.getDataRegionName();
-
-                if (CU.isSystemCache(cacheName))
-                    memPlcName = "sysMemPlc";
-                else if (memPlcName == null && cfg.getDataStorageConfiguration() != null)
-                    memPlcName = cfg.getDataStorageConfiguration().getDefaultDataRegionConfiguration().getName();
-
-                if (!memPlcNamesMapping.containsKey(memPlcName))
-                    memPlcNamesMapping.put(memPlcName, new ArrayList<String>());
-
-                ArrayList<String> cacheNames = memPlcNamesMapping.get(memPlcName);
-
-                cacheNames.add(cacheName);
-            }
-
-            for (Map.Entry<String, ArrayList<String>> e : memPlcNamesMapping.entrySet()) {
-                sb.a("in '").a(e.getKey()).a("' dataRegion: [");
-
-                for (String s : e.getValue())
-                    sb.a("'").a(s).a("', ");
-
-                sb.d(sb.length() - 2, sb.length()).a("], ");
-            }
-
-            U.log(log, "Configured caches [" + sb.d(sb.length() - 2, sb.length()).toString() + ']');
-        }
-    }
-
-    /**
-     *
-     */
-    private void ackP2pConfiguration() {
-        assert cfg != null;
-
-        if (cfg.isPeerClassLoadingEnabled())
-            U.warn(
-                log,
-                "Peer class loading is enabled (disable it in production for performance and " +
-                    "deployment consistency reasons)",
-                "Peer class loading is enabled (disable it for better performance)"
-            );
-    }
-
-    /**
-     * Prints security status.
-     */
-    private void ackSecurity() {
-        assert log != null;
-
-        U.quietAndInfo(log, "Security status [authentication=" + onOff(ctx.security().enabled())
-            + ", tls/ssl=" + onOff(ctx.config().getSslContextFactory() != null) + ']');
-    }
-
-    /**
-     * Prints out VM arguments and IGNITE_HOME in info mode.
-     *
-     * @param rtBean Java runtime bean.
-     */
-    private void ackVmArguments(RuntimeMXBean rtBean) {
-        assert log != null;
-
-        // Ack IGNITE_HOME and VM arguments.
-        if (log.isInfoEnabled() && S.INCLUDE_SENSITIVE) {
-            log.info("IGNITE_HOME=" + cfg.getIgniteHome());
-            log.info("VM arguments: " + rtBean.getInputArguments());
-        }
-    }
-
-    /**
-     * Prints out class paths in debug mode.
-     *
-     * @param rtBean Java runtime bean.
-     */
-    private void ackClassPaths(RuntimeMXBean rtBean) {
-        assert log != null;
-
-        // Ack all class paths.
-        if (log.isDebugEnabled()) {
-            log.debug("Boot class path: " + rtBean.getBootClassPath());
-            log.debug("Class path: " + rtBean.getClassPath());
-            log.debug("Library path: " + rtBean.getLibraryPath());
-        }
-    }
 
     /**
      * @param cfg Grid configuration.
