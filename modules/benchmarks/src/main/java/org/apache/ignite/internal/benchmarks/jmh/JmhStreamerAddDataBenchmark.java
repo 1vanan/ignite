@@ -26,28 +26,34 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 
 @State(Scope.Benchmark)
 public class JmhStreamerAddDataBenchmark extends JmhCacheAbstractBenchmark {
+    /** Default cache name. */
     private static final String DEFAULT_CACHE_NAME = "default";
-    private Ignite svrNode1;
-    private Ignite client;
+
+    /** Data loader. */
     private IgniteDataStreamer<Integer, Integer> dataLdr;
-    private Collection<AbstractMap.SimpleEntry<Integer, Integer>> testList = new ArrayList<>();
+
+    /** Test list. */
+    private static Collection<AbstractMap.SimpleEntry<Integer, Integer>> testList = new ArrayList<>();
+
+    /** Data amount. */
+    private static final int DATA_AMOUNT = 5;
 
 
     /**
      * Create Ignite configuration.
      */
-private static IgniteConfiguration getConfiguration(String cfgName){
-    IgniteConfiguration cfg = new IgniteConfiguration();
+    private static IgniteConfiguration getConfiguration(String cfgName) {
+        IgniteConfiguration cfg = new IgniteConfiguration();
 
-    cfg.setCacheConfiguration(defaultCacheConfiguration());
+        cfg.setCacheConfiguration(defaultCacheConfiguration());
 
-    if(cfgName.contains("client"))
-        cfg.setClientMode(true);
+        if (cfgName.contains("client"))
+            cfg.setClientMode(true);
 
-    cfg.setIgniteInstanceName(cfgName);
+        cfg.setIgniteInstanceName(cfgName);
 
-    return cfg;
-}
+        return cfg;
+    }
 
     /**
      * @return New cache configuration with modified defaults.
@@ -65,22 +71,30 @@ private static IgniteConfiguration getConfiguration(String cfgName){
 
 
     /**
-     *
+     * Start 3 servers and 1 client.
      */
-    @Setup (Level.Trial)
+    @Setup(Level.Trial)
     public void goSetup() {
-        IgniteConfiguration cfgSrv = getConfiguration("server1");
+        IgniteConfiguration cfgSrv1 = getConfiguration("server1");
+
+        IgniteConfiguration cfgSrv2 = getConfiguration("server2");
 
         IgniteConfiguration cfgClient = getConfiguration("client");
 
-        svrNode1 = Ignition.start(cfgSrv);
+        Ignition.start(cfgSrv1);
 
-        client = Ignition.start(cfgClient);
+        Ignition.start(cfgSrv2);
 
-        testList.add(new HashMap.SimpleEntry<>(1, 1));
+        Ignite client = Ignition.start(cfgClient);
+
+        fillCollection();
 
         dataLdr = client.dataStreamer(cfgClient.getCacheConfiguration()[0].getName());
+    }
 
+    private static void fillCollection() {
+        for (int i = 0; i < DATA_AMOUNT; i++)
+            testList.add(new HashMap.SimpleEntry<>(i, i));
     }
 
     /**
@@ -88,35 +102,39 @@ private static IgniteConfiguration getConfiguration(String cfgName){
      *
      * @throws Exception If failed.
      */
-    @TearDown (Level.Trial)
+    @TearDown(Level.Trial)
     public void gotearDown() throws Exception {
         Ignition.stopAll(true);
     }
 
 
-
     /**
-     *
+     * Perfomance of addData per collection.
      */
-    @Benchmark @BenchmarkMode(Mode.AverageTime) @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
     public void addDataCollection() {
-        dataLdr.addData(1, 1);
-    }
-
-    /**
-     *
-     */
-    @Benchmark @BenchmarkMode(Mode.AverageTime) @OutputTimeUnit(TimeUnit.NANOSECONDS)
-    public void addDataKeyValue() {
         dataLdr.addData(testList);
     }
 
+    /**
+     * Perfomance of addData per key value.
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    public void addDataKeyValue() {
+        for (int i = 0; i < DATA_AMOUNT; i++)
+            dataLdr.addData(i, i);
+
+    }
 
     public static void main(String[] args) throws RunnerException {
         ChainedOptionsBuilder builder = new OptionsBuilder()
                 .measurementIterations(5)
                 .measurementTime(TimeValue.seconds(1))
-                .operationsPerInvocation(1)
+                .operationsPerInvocation(3)
                 .warmupIterations(9)
                 .forks(1)
                 .threads(1)
