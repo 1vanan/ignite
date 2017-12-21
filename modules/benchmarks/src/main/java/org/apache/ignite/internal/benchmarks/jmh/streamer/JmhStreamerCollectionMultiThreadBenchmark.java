@@ -1,117 +1,37 @@
-package org.apache.ignite.internal.benchmarks.jmh;
+package org.apache.ignite.internal.benchmarks.jmh.streamer;
 
-import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteDataStreamer;
 import org.apache.ignite.Ignition;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
-import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 
 /**
- *
+ * Benchmark on streaming collection.
  */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark {
+public class JmhStreamerCollectionMultiThreadBenchmark extends JmhStreamerAbstractBenchmark {
     /**
-     * Default cache name.
+     * Streaming data amount.
      */
-    private static final String DEFAULT_CACHE_NAME = "default";
-
-    /**
-     * Data amount.
-     */
-    private static final int DATA_AMOUNT = 1000;
-
-    /**
-     * Thread amount.
-     */
-    static final AtomicInteger streamerId = new AtomicInteger(0);
-
-    /**
-     * Server 1.
-     */
-    private Ignite srv1;
-
-    /**
-     * Server 2.
-     */
-    private Ignite srv2;
-
-    /**
-     * Client node.
-     */
-    private static Ignite client;
-
-
-    /**
-     * Create Ignite configuration.
-     */
-    private static IgniteConfiguration getConfiguration(String cfgName, boolean isClient) {
-        IgniteConfiguration cfg = new IgniteConfiguration();
-
-        cfg.setIgniteInstanceName(cfgName);
-
-
-        if (isClient) {
-            cfg.setClientMode(true);
-
-            cfg.setCacheConfiguration(defaultCacheConfiguration(0), defaultCacheConfiguration(1),
-                    defaultCacheConfiguration(2));
-        } else
-            cfg.setCacheConfiguration(defaultCacheConfiguration());
-
-        return cfg;
-    }
-
-    /**
-     * @return New cache configuration with modified defaults for client node.
-     */
-    private static CacheConfiguration defaultCacheConfiguration(int cacheNumber) {
-        CacheConfiguration cfg;
-
-        cfg = new CacheConfiguration(DEFAULT_CACHE_NAME + cacheNumber);
-
-        cfg.setAtomicityMode(TRANSACTIONAL);
-
-        cfg.setWriteSynchronizationMode(FULL_SYNC);
-
-        return cfg;
-    }
-
-    /**
-     * @return New cache configuration with modified defaults for server node.
-     */
-    private static CacheConfiguration defaultCacheConfiguration() {
-        CacheConfiguration cfg;
-
-        cfg = new CacheConfiguration(DEFAULT_CACHE_NAME);
-
-        cfg.setAtomicityMode(TRANSACTIONAL);
-
-        cfg.setWriteSynchronizationMode(FULL_SYNC);
-
-        return cfg;
-    }
+    private final static int DATA_AMOUNT = 1000;
 
     /**
      * Start 3 servers and 1 client.
      */
     @Setup(Level.Trial)
-    public void setup() {
+    public void setup1() {
         srv1 = Ignition.start(getConfiguration("srv1", false));
 
         srv2 = Ignition.start(getConfiguration("srv2", false));
@@ -193,12 +113,12 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
      */
     public static void main(String[] args) throws RunnerException {
         ChainedOptionsBuilder builder = new OptionsBuilder()
-                .measurementIterations(20)
+                .measurementIterations(25)
                 .operationsPerInvocation(3)
-                .warmupIterations(5)
+                .warmupIterations(7)
                 .forks(1)
-                .threads(3)
-                .include(JmhStreamerAddDataMultiThreadBenchmark.class.getSimpleName());
+                .threads(1)
+                .include(JmhStreamerCollectionMultiThreadBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();
     }
