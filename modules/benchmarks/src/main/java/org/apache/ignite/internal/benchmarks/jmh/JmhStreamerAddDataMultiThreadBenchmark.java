@@ -13,9 +13,8 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
@@ -25,7 +24,7 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
  */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark {
     /**
      * Default cache name.
@@ -33,27 +32,17 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
     private static final String DEFAULT_CACHE_NAME = "default";
 
     /**
-     * Test list.
-     */
-    private static Collection<AbstractMap.SimpleEntry<Integer, Integer>> testList = new ArrayList<>();
-
-    /**
      * Data amount.
      */
-    private static final int DATA_AMOUNT = 10;
+    private static final int DATA_AMOUNT = 1000;
 
     /**
      * Thread amount.
      */
-    private static final int THREAD_AMOUNT = 1;
+    static final AtomicInteger streamerId = new AtomicInteger(0);
 
     /**
-     * Executor.
-     */
-    private ThreadFactory executor;
-
-    /**
-     * Client.
+     * Server 1.
      */
     private Ignite srv1;
 
@@ -62,10 +51,10 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
      */
     private Ignite srv2;
 
-    /** Client. */
+    /**
+     * Client node.
+     */
     private static Ignite client;
-
-    private static List<IgniteDataStreamer<Integer, Integer>> dataLdrList = new ArrayList<>();
 
 
     /**
@@ -73,6 +62,7 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
      */
     private static IgniteConfiguration getConfiguration(String cfgName, boolean isClient) {
         IgniteConfiguration cfg = new IgniteConfiguration();
+
         cfg.setIgniteInstanceName(cfgName);
 
 
@@ -81,33 +71,40 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
 
             cfg.setCacheConfiguration(defaultCacheConfiguration(0), defaultCacheConfiguration(1));
         } else
-            cfg.setCacheConfiguration(defaultCacheConfiguration(111));
+            cfg.setCacheConfiguration(defaultCacheConfiguration());
 
         return cfg;
     }
 
     /**
-     * @return New cache configuration with modified defaults.
+     * @return New cache configuration with modified defaults for client node.
      */
     private static CacheConfiguration defaultCacheConfiguration(int cacheNumber) {
         CacheConfiguration cfg;
 
-        if (cacheNumber == 111)
-            cfg = new CacheConfiguration(DEFAULT_CACHE_NAME);
-        else
-            cfg = new CacheConfiguration(DEFAULT_CACHE_NAME + cacheNumber);
+        cfg = new CacheConfiguration(DEFAULT_CACHE_NAME + cacheNumber);
 
         cfg.setAtomicityMode(TRANSACTIONAL);
+
         cfg.setWriteSynchronizationMode(FULL_SYNC);
 
         return cfg;
     }
 
-    @State(Scope.Benchmark)
-    public static class StreamingMap {
-        static Map<Integer, Integer> intMap = new HashMap<>();
-    }
+    /**
+     * @return New cache configuration with modified defaults for server node.
+     */
+    private static CacheConfiguration defaultCacheConfiguration() {
+        CacheConfiguration cfg;
 
+        cfg = new CacheConfiguration(DEFAULT_CACHE_NAME);
+
+        cfg.setAtomicityMode(TRANSACTIONAL);
+
+        cfg.setWriteSynchronizationMode(FULL_SYNC);
+
+        return cfg;
+    }
 
     /**
      * Start 3 servers and 1 client.
@@ -115,27 +112,10 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
     @Setup(Level.Trial)
     public void setup() {
         srv1 = Ignition.start(getConfiguration("srv1", false));
-//        srv2 = Ignition.start(getConfiguration("srv2", false));
+
+        srv2 = Ignition.start(getConfiguration("srv2", false));
+
         client = Ignition.start(getConfiguration("clt", true));
-
-        prepareStreamingCollection(client);
-
-        for (int i = 0; i < DATA_AMOUNT; i++)
-            StreamingMap.intMap.put(i, i);
-
-        executor = Executors.defaultThreadFactory();
-    }
-
-    /**
-     * Fill streaming collection.
-     */
-    private static void prepareStreamingCollection(Ignite client) {
-        for (int i = 0; i < DATA_AMOUNT; i++)
-            testList.add(new HashMap.SimpleEntry<>(i, i));
-
-        for (int i = 0; i < THREAD_AMOUNT; i++)
-            dataLdrList.add(client.<Integer, Integer>dataStreamer(DEFAULT_CACHE_NAME + i));
-
     }
 
     /**
@@ -147,15 +127,13 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
     }
 
     /**
-     * Clean caches and loader after each operation.
+     * Clean caches after each operation.
      */
     @TearDown(Level.Iteration)
     public void clean() {
         srv1.cache(DEFAULT_CACHE_NAME).clear();
-//        srv2.cache(DEFAULT_CACHE_NAME).clear();
-//        for (IgniteDataStreamer dataLdr : dataLdrList)
-//            dataLdr.flush();
 
+        srv2.cache(DEFAULT_CACHE_NAME).clear();
     }
 
     /**
@@ -163,32 +141,47 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
      */
     @Benchmark
     public void addDataCollection(CollectionStreamer streamer) {
-        for (int i = 0; i < THREAD_AMOUNT; i++) {
-            streamer.setThreadId(i);
-
-            Thread thread = executor.newThread(streamer);
-
-            thread.start();
-        }
+        streamer.run();
     }
 
     /**
-     *
+     * Inner class which prepares collection and streams it.
      */
-    @State(Scope.Benchmark)
+    @State(Scope.Thread)
     public static class CollectionStreamer implements Runnable {
+        /**
+         * Test list inner.
+         */
+        private Collection<AbstractMap.SimpleEntry<Integer, Integer>> testListInner = new ArrayList<>();
 
-        int threadId;
+        /**
+         * Id.
+         */
+        int id;
 
-        public void setThreadId(int threadId) {
-            this.threadId = threadId;
+        /**
+         * Data loader.
+         */
+        IgniteDataStreamer<Integer, Integer> dataLdr;
+
+        /**
+         * Default constructor.
+         */
+        public CollectionStreamer() {
+            this.id = streamerId.getAndIncrement();
+
+            for (int i = 0; i < DATA_AMOUNT; i++)
+                testListInner.add(new HashMap.SimpleEntry<>(i, i));
+
+            dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + id);
         }
 
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void run() {
-            IgniteDataStreamer<Integer, Integer> dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + threadId);
-
-            dataLdr.addData(testList);
+            dataLdr.addData(testListInner);
         }
     }
 
@@ -199,11 +192,11 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
      */
     public static void main(String[] args) throws RunnerException {
         ChainedOptionsBuilder builder = new OptionsBuilder()
-                .measurementIterations(10)
+                .measurementIterations(20)
                 .operationsPerInvocation(3)
                 .warmupIterations(5)
                 .forks(1)
-                .threads(1)
+                .threads(2)
                 .include(JmhStreamerAddDataMultiThreadBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();
