@@ -69,7 +69,8 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
         if (isClient) {
             cfg.setClientMode(true);
 
-            cfg.setCacheConfiguration(defaultCacheConfiguration(0), defaultCacheConfiguration(1));
+            cfg.setCacheConfiguration(defaultCacheConfiguration(0), defaultCacheConfiguration(1),
+                    defaultCacheConfiguration(2));
         } else
             cfg.setCacheConfiguration(defaultCacheConfiguration());
 
@@ -150,12 +151,12 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
     @State(Scope.Thread)
     public static class CollectionStreamer implements Runnable {
         /**
-         * Test list inner.
+         * List that will be streaming from client.
          */
-        private Collection<AbstractMap.SimpleEntry<Integer, Integer>> testListInner = new ArrayList<>();
+        private Collection<AbstractMap.SimpleEntry<Integer, Integer>> streamingList = new ArrayList<>();
 
         /**
-         * Id.
+         * Streamer id.
          */
         int id;
 
@@ -165,13 +166,13 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
         IgniteDataStreamer<Integer, Integer> dataLdr;
 
         /**
-         * Default constructor.
+         * Default constructor. Set streamer id and fill streaming collection.
          */
         public CollectionStreamer() {
             this.id = streamerId.getAndIncrement();
 
             for (int i = 0; i < DATA_AMOUNT; i++)
-                testListInner.add(new HashMap.SimpleEntry<>(i, i));
+                streamingList.add(new HashMap.SimpleEntry<>(i, i));
 
             dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + id);
         }
@@ -181,7 +182,7 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
          */
         @Override
         public void run() {
-            dataLdr.addData(testListInner);
+            dataLdr.addData(streamingList);
         }
     }
 
@@ -196,7 +197,7 @@ public class JmhStreamerAddDataMultiThreadBenchmark extends JmhAbstractBenchmark
                 .operationsPerInvocation(3)
                 .warmupIterations(5)
                 .forks(1)
-                .threads(2)
+                .threads(3)
                 .include(JmhStreamerAddDataMultiThreadBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();
