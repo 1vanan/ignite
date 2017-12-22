@@ -75,15 +75,16 @@ public class JmhStreamerKeyValueMultiThreadBenchmark extends JmhStreamerAbstract
      * Perfomance of addData per key/value.
      */
     @Benchmark
-    public void addDataCollection(KeyValueStreamer streamer) {
-        streamer.run();
+    public void addDataCollection(KeyValueStreamer dataStreamer) {
+        for (Map.Entry<Integer, Integer> entry : dataStreamer.data.entrySet())
+            dataStreamer.dataLdr.addData(entry.getKey(), entry.getValue());
     }
 
     /**
      * Inner class which prepares collection and streams it.
      */
     @State(Scope.Thread)
-    public static class KeyValueStreamer implements Runnable {
+    public static class KeyValueStreamer {
         /**
          * List that will be streaming from client.
          */
@@ -110,14 +111,6 @@ public class JmhStreamerKeyValueMultiThreadBenchmark extends JmhStreamerAbstract
 
             dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + id);
         }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override public void run() {
-            for (Map.Entry<Integer, Integer> entry : data.entrySet())
-                dataLdr.addData(entry.getKey(), entry.getValue());
-        }
     }
 
     /**
@@ -127,11 +120,11 @@ public class JmhStreamerKeyValueMultiThreadBenchmark extends JmhStreamerAbstract
      */
     public static void main(String[] args) throws RunnerException {
         ChainedOptionsBuilder builder = new OptionsBuilder()
-                .measurementIterations(20)
+                .measurementIterations(25)
                 .operationsPerInvocation(3)
                 .warmupIterations(7)
                 .forks(1)
-                .threads(5)
+                .threads(4)
                 .include(JmhStreamerKeyValueMultiThreadBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();

@@ -77,15 +77,15 @@ public class JmhStreamerCollectionMultiThreadBenchmark extends JmhStreamerAbstra
      * Perfomance of addData per collection.
      */
     @Benchmark
-    public void addDataCollection(CollectionStreamer streamer) {
-        streamer.run();
+    public void addDataCollection(CollectionStreamer dataStreamer) {
+        dataStreamer.dataLdr.addData(dataStreamer.streamingList);
     }
 
     /**
      * Inner class which prepares collection and streams it.
      */
     @State(Scope.Thread)
-    public static class CollectionStreamer implements Runnable {
+    public static class CollectionStreamer {
         /**
          * List that will be streaming from client.
          */
@@ -112,13 +112,6 @@ public class JmhStreamerCollectionMultiThreadBenchmark extends JmhStreamerAbstra
 
             dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + id);
         }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override public void run() {
-            dataLdr.addData(streamingList);
-        }
     }
 
     /**
@@ -132,7 +125,7 @@ public class JmhStreamerCollectionMultiThreadBenchmark extends JmhStreamerAbstra
                 .operationsPerInvocation(3)
                 .warmupIterations(7)
                 .forks(1)
-                .threads(1)
+                .threads(4)
                 .include(JmhStreamerCollectionMultiThreadBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();
