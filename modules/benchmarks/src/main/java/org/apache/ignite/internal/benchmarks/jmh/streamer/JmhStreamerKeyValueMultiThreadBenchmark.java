@@ -115,7 +115,7 @@ public class JmhStreamerKeyValueMultiThreadBenchmark extends JmhStreamerAbstract
                 .operationsPerInvocation(3)
                 .warmupIterations(7)
                 .forks(1)
-                .threads(2)
+                .threads(5)
                 .include(JmhStreamerKeyValueMultiThreadBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();

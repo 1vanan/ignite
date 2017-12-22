@@ -51,9 +51,8 @@ class JmhStreamerAbstractBenchmark {
         if (isClient) {
             cfg.setClientMode(true);
 
-            cfg.setCacheConfiguration(defaultCacheConfiguration(0), defaultCacheConfiguration(1),
-                    defaultCacheConfiguration(2), defaultCacheConfiguration(3),
-                    defaultCacheConfiguration(4), defaultCacheConfiguration(5));
+            cfg.setCacheConfiguration(defaultCacheConfiguration(0), defaultCacheConfiguration(1), defaultCacheConfiguration(2)
+                    , defaultCacheConfiguration(3), defaultCacheConfiguration(4));
         } else
             cfg.setCacheConfiguration(defaultCacheConfiguration());
 
