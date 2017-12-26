@@ -123,6 +123,9 @@ import static org.apache.ignite.internal.GridTopic.TOPIC_DATASTREAM;
  */
 @SuppressWarnings("unchecked")
 public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed {
+    /** Response future. */
+    GridCompoundFuture<K, V> composeFut = new GridCompoundFuture<>();
+
     /** Isolated receiver. */
     private static final StreamReceiver ISOLATED_UPDATER = new IsolatedUpdater();
 
@@ -270,6 +273,9 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     /** */
     private final AtomicBoolean remapOwning = new AtomicBoolean();
+
+    /** Max buffer size. */
+    private int maxBufSize = 5;
 
     /**
      * @param ctx Grid kernal context.
@@ -624,21 +630,21 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         GridFutureAdapter<Object> resFut = new GridFutureAdapter<>();
 
         try {
-            resFut.listen(rmvActiveFut);
+            if (composeFut.futures().isEmpty() || composeFut.futures().size() > maxBufSize) {
+                resFut.listen(rmvActiveFut);
 
-            activeFuts.add(resFut);
+                activeFuts.add(resFut);//выполнять в конце опустошения каждого пакета
 
-            Collection<KeyCacheObjectWrapper> keys = null;
+                Collection<KeyCacheObjectWrapper> keys = null;
 
-            if (entries.size() > 1) {
-                keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
+                if (entries.size() > 1) {
+                    keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
 
-                for (DataStreamerEntry entry : entries)
-                    keys.add(new KeyCacheObjectWrapper(entry.getKey()));
+                    for (DataStreamerEntry entry : entries)
+                        keys.add(new KeyCacheObjectWrapper(entry.getKey()));
+                }
+                load0(entries, resFut, keys, 0);
             }
-
-            load0(entries, resFut, keys, 0);
-
             return new IgniteCacheFutureImpl<>(resFut);
         }
         catch (Throwable e) {
@@ -681,7 +687,11 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             return new IgniteFinishedCacheFutureImpl<>(e);
         }
 
-        return addDataInternal(Collections.singleton(new DataStreamerEntry(key0, val0)));
+        DataStreamerEntry streamerEntry = new DataStreamerEntry(key0, val0);
+
+        composeFut.add(streamerEntry);
+
+        return addDataInternal(Collections.singleton(streamerEntry));
     }
 
     /** {@inheritDoc} */
