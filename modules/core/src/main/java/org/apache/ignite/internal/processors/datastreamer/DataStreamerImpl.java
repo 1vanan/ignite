@@ -281,7 +281,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     private final AtomicBoolean remapOwning = new AtomicBoolean();
 
     /** Max buffer size. */
-    private int maxBufSize = 5;
+    private int keyValueBufSize = 0;
 
     /**
      * @param ctx Grid kernal context.
@@ -377,6 +377,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
             ctx.grid().getOrCreateCache(ccfg);
         }
+    }
+
+    public void setKeyValueBufSize(Integer keyValueBufSize) {
+        this.keyValueBufSize = keyValueBufSize;
     }
 
     /**
@@ -633,64 +637,61 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     public IgniteFuture<?> addDataInternal(Collection<? extends DataStreamerEntry> entries) {
         enterBusy();
 
+        boolean additionPerKeyVal = entries.size() == 1 && keyValueBufSize != 0;
+
         GridFutureAdapter<Object> resFut = new GridFutureAdapter<>();
 
-        if (composFutures.isEmpty())
-            composFutures.add(new GridCompoundFuture<K, V>());
+        Collection<IgniteInternalFuture<K>> bufferedFutures = new ArrayList<>();
 
-        composFutures.get(composFutures.size()).add((IgniteInternalFuture)resFut);
-
-        while (entries.iterator().hasNext())
-            composEntries.add(entries.iterator().next());
-
-        Collection<IgniteInternalFuture<K>> bufferedFutures = composFutures.get(composFutures.size()).futures();
-
-        try {
-            if (bufferedFutures.size() == bufSize) {
-                Collection<KeyCacheObjectWrapper> keys = null;
-
-                for (IgniteInternalFuture innerFut : bufferedFutures) {
-                    innerFut.listen(rmvActiveFut);
-
-                    activeFuts.add(innerFut);
-                }
-
-                if (composEntries.size() > 1) {
-//                        if (composEntries.isEmpty())
-                    keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
-
-                    for (DataStreamerEntry entry : composEntries)
-                        keys.add(new KeyCacheObjectWrapper(entry.getKey()));
-                }
-
-                load0(composEntries, (GridFutureAdapter)composFutures, keys, 0);
-
-                composEntries.clear();
-
+        if (additionPerKeyVal) {
+            if (composFutures.isEmpty())
                 composFutures.add(new GridCompoundFuture<K, V>());
 
+            composFutures.get(composFutures.size() - 1).add((IgniteInternalFuture)resFut);
+
+            composEntries.add(entries.iterator().next());
+
+            bufferedFutures = composFutures.get(composFutures.size() - 1).futures();
+        }
+
+        try {
+            if (bufferedFutures.size() == keyValueBufSize || !additionPerKeyVal) {
+                Collection<KeyCacheObjectWrapper> keys = null;
+
+                if (additionPerKeyVal) {
+                    for (IgniteInternalFuture innerFut : bufferedFutures) {
+                        innerFut.listen(rmvActiveFut);
+
+                        activeFuts.add(innerFut);
+                    }
+                    if (composEntries.size() > 1) {
+                        keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
+
+                        for (DataStreamerEntry entry : composEntries)
+                            keys.add(new KeyCacheObjectWrapper(entry.getKey()));
+                    }
+                    load0(composEntries, (GridFutureAdapter)composFutures.get(composFutures.size() - 1), keys, 0);
+
+                    composEntries.clear();
+
+                    composFutures.add(new GridCompoundFuture<K, V>());
+                }
+                else {
+                    resFut.listen(rmvActiveFut);
+
+                    activeFuts.add(resFut);
+
+                    if (entries.size() > 1) {
+                        keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
+
+                        for (DataStreamerEntry entry : entries)
+                            keys.add(new KeyCacheObjectWrapper(entry.getKey()));
+                    }
+                    load0(entries, resFut, keys, 0);
+                }
                 return new IgniteCacheFutureImpl<>(composFutures.get(composFutures.size() - 1));
             }
         }
-
-//        try {
-//            if (composFutures.futures().isEmpty() || composFutures.futures().size() > maxBufSize) {
-//                resFut.listen(rmvActiveFut);
-//
-//                activeFuts.add(resFut);//выполнять в конце опустошения каждого пакета
-//
-//                Collection<KeyCacheObjectWrapper> keys = null;
-//
-//                if (entries.size() > 1) {
-//                    keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
-//
-//                    for (DataStreamerEntry entry : entries)
-//                        keys.add(new KeyCacheObjectWrapper(entry.getKey()));
-//                }
-//                load0(entries, resFut, keys, 0);
-//
-//            return new IgniteCacheFutureImpl<>(resFut);
-//        }
         catch (Throwable e) {
             resFut.onDone(e);
 
@@ -715,6 +716,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     /** {@inheritDoc} */
     @Override public IgniteFuture<?> addData(K key, V val) {
         A.notNull(key, "key");
+
+        setKeyValueBufSize(5);
 
         if (val == null)
             checkSecurityPermission(SecurityPermission.CACHE_REMOVE);

@@ -97,17 +97,18 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
         timeBefore = U.currentTimeMillis();
         while (true) {
-                final int indx = i;
-                IgniteFuture igniteFuture = dataLdr.addData(i, i);
-                igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
-                    @Override
-                    public void apply(IgniteFuture<?> igniteFuture) {
-                        igniteFuture.get();
+            final int indx = i;
+            System.out.println(i);
+            IgniteFuture igniteFuture = dataLdr.addData(i, i);
+            igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
+                @Override
+                public void apply(IgniteFuture<?> igniteFuture) {
+//                        igniteFuture.get();
 
-                        System.out.println("!!!~ done " + indx);
-                    }
-                });
-            igniteFuture.get();
+                    System.out.println("!!!~ done " + indx);
+                }
+            });
+//            igniteFuture.get();
             i++;
         }
 
@@ -127,9 +128,9 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
             i++;
             final int indx = i;
-            System.out.println(i );
+            System.out.println(i);
 //            for (; i % ENTRY_AMOUNT != 0; i++)
-                testList.add(new HashMap.SimpleEntry<>(i, i));
+            testList.add(new HashMap.SimpleEntry<>(i, i));
 
             timeBefore = U.currentTimeMillis();
 
