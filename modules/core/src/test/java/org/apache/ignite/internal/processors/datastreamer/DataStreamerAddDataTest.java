@@ -38,7 +38,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
     private GridStringLogger strLog = new GridStringLogger();
 
     /** Ignite data streamer. */
-    private static IgniteDataStreamer<Integer, Integer> dataLdr;
+    private static DataStreamerImpl<Integer, Integer> dataLdr;
 
     /** Client. */
     private static Ignite client;
@@ -48,10 +48,13 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
     /** Server 2. */
     private static Ignite srv2;
+    private int DATA_AMOUNT = 100;
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
         super.beforeTestsStarted();
+
+        System.out.println("start1");
 
         srv1 = startGrid("server1");
 
@@ -59,11 +62,13 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
         client = startGrid("client");
 
-        dataLdr = client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
+        dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
     }
 
     /** {@inheritDoc} */
     @Override protected void afterTestsStopped() throws Exception {
+        System.out.println("stop test");
+
         super.afterTestsStopped();
 
         dataLdr.close();
@@ -89,28 +94,38 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
         return cfg;
     }
 
+    final List<Integer> list = new ArrayList<>();
+
     /**
      *
      */
     public void testAddDataKeyValue() throws Exception {
-        int i = 0;
+        final List<IgniteFuture> futures = new ArrayList<>();
 
         timeBefore = U.currentTimeMillis();
-        while (true) {
+        for  (int i = 0; i <= 14999; i++) {
             final int indx = i;
             System.out.println(i);
             IgniteFuture igniteFuture = dataLdr.addData(i, i);
+            futures.add(igniteFuture);
             igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
                 @Override
                 public void apply(IgniteFuture<?> igniteFuture) {
 //                        igniteFuture.get();
 
                     System.out.println("!!!~ done " + indx);
+
+                    System.out.println(futures.get(999).isDone());
+
                 }
             });
 //            igniteFuture.get();
-            i++;
         }
+        System.out.println("stop test");
+
+//        dataLdr.close();
+//
+//        stopAllGrids();
 
 //        timeAfter = U.currentTimeMillis();
 
@@ -121,33 +136,34 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      *
      */
     public void testAddDataCollection() throws Exception {
-        int i = 0;
+        Collection<java.util.AbstractMap.SimpleEntry<Integer, Integer>> testList = new ArrayList<>();
+        for  (int i = 0; i < 10000; i++) {
 
-        while (true) {
-            Collection<java.util.AbstractMap.SimpleEntry<Integer, Integer>> testList = new ArrayList<>();
 
             i++;
             final int indx = i;
-            System.out.println(i);
+//            System.out.println(i);
 //            for (; i % ENTRY_AMOUNT != 0; i++)
-            testList.add(new HashMap.SimpleEntry<>(i, i));
+
 
             timeBefore = U.currentTimeMillis();
+            testList.add(new HashMap.SimpleEntry<>(i, i));
 
-            IgniteFuture<?> igniteFuture = dataLdr.addData(testList);
 
             timeAfter = U.currentTimeMillis();
 
 //            System.out.println("Collection: " + (timeAfter - timeBefore));
-            igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
-                @Override
-                public void apply(IgniteFuture<?> igniteFuture) {
-                    igniteFuture.get();
-
-                    System.out.println("!!!~ done " + indx);
-                }
-            });
+//            igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
+//                @Override
+//                public void apply(IgniteFuture<?> igniteFuture) {
+//                    igniteFuture.get();
+//
+//                    System.out.println("!!!~ done " + indx);
+//                }
+//            });
         }
+        IgniteFuture<?> igniteFuture = dataLdr.addData(testList);
+
 //        dataLdr.flush();
 //        System.out.println(igniteFuture.get());
     }
