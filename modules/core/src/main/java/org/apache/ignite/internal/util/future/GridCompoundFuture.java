@@ -60,7 +60,7 @@ public class GridCompoundFuture<T, R> extends GridFutureAdapter<R> implements Ig
     /** Possible values: null (no future), IgniteInternalFuture instance (single future) or List of futures  */
     private volatile Object futs;
 
-    /** Reducer. */
+    /** Reducer for results of futures. */
     @GridToStringInclude
     private final IgniteReducer<T, R> rdc;
 
