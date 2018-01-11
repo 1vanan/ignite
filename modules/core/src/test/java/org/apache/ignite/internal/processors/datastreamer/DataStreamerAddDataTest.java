@@ -115,7 +115,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
                     System.out.println("!!!~ done " + indx);
 
-                    System.out.println(futures.get(999).isDone());
+                    System.out.println(futures.get(998).isDone());
 
                 }
             });
