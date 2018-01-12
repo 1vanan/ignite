@@ -100,28 +100,20 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      *
      */
     public void testAddDataKeyValue() throws Exception {
-        final List<IgniteFuture> futures = new ArrayList<>();
-
-        timeBefore = U.currentTimeMillis();
-        for  (int i = 0; i <= 14999; i++) {
+        for (int i = 1; i <= 6; i++) {
             final int indx = i;
             System.out.println(i);
-            IgniteFuture igniteFuture = dataLdr.addData(i, i);
-            futures.add(igniteFuture);
+            IgniteFuture igniteFuture = dataLdr.addData(i , i);
+
             igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
                 @Override
                 public void apply(IgniteFuture<?> igniteFuture) {
 //                        igniteFuture.get();
-
                     System.out.println("!!!~ done " + indx);
-
-                    System.out.println(futures.get(998).isDone());
-
                 }
             });
 //            igniteFuture.get();
         }
-        System.out.println("stop test");
 
 //        dataLdr.close();
 //
@@ -137,18 +129,15 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      */
     public void testAddDataCollection() throws Exception {
         Collection<java.util.AbstractMap.SimpleEntry<Integer, Integer>> testList = new ArrayList<>();
-        for  (int i = 0; i < 10000; i++) {
-
+        for (int i = 0; i < 10000; i++) {
 
             i++;
             final int indx = i;
 //            System.out.println(i);
 //            for (; i % ENTRY_AMOUNT != 0; i++)
 
-
             timeBefore = U.currentTimeMillis();
             testList.add(new HashMap.SimpleEntry<>(i, i));
-
 
             timeAfter = U.currentTimeMillis();
 
@@ -164,6 +153,13 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
         }
         IgniteFuture<?> igniteFuture = dataLdr.addData(testList);
 
+        igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
+            @Override
+            public void apply(IgniteFuture<?> igniteFuture) {
+//                        igniteFuture.get();
+                System.out.println("!!!~ done ");
+            }
+        });
 //        dataLdr.flush();
 //        System.out.println(igniteFuture.get());
     }
