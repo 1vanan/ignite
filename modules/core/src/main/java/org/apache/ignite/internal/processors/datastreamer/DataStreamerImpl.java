@@ -93,6 +93,7 @@ import org.apache.ignite.internal.util.GridConcurrentHashSet;
 import org.apache.ignite.internal.util.GridSpinBusyLock;
 import org.apache.ignite.internal.util.future.GridCompoundFuture;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.future.IgniteFutureImpl;
 import org.apache.ignite.internal.util.lang.GridPeerDeployAware;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
@@ -123,11 +124,12 @@ import static org.apache.ignite.internal.GridTopic.TOPIC_DATASTREAM;
  */
 @SuppressWarnings("unchecked")
 public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed {
-    /** Response future. */
-    private List<GridCompoundFuture<K, V>> composFutures = new ArrayList<>();
+    List<GridFutureAdapter> futuresPerBatch = new ArrayList<>();
+
+    List<DataStreamerEntry> dataStreamerBuffer = new ArrayList<>();
 
     /** Compose entries. */
-    private Collection<DataStreamerEntry> composEntries = new ArrayList<>();
+    private List<Collection<Map.Entry<K, V>>> composEntriesList = new ArrayList<>();
 
     /** Keys. */
     private Collection<KeyCacheObjectWrapper> keys = null;
@@ -282,6 +284,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     /** Max buffer size. */
     private int keyValueBufSize = 0;
+    private Collection<DataStreamerEntry> collection = new ArrayList<>();
 
     /**
      * @param ctx Grid kernal context.
@@ -637,61 +640,56 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     public IgniteFuture<?> addDataInternal(Collection<? extends DataStreamerEntry> entries) {
         enterBusy();
 
+        Collection<KeyCacheObjectWrapper> keys = null;
+
         boolean additionPerKeyVal = entries.size() == 1 &&  keyValueBufSize != 0;
+        if(additionPerKeyVal){
+            if(futuresPerBatch.isEmpty())
+                futuresPerBatch.add(new GridFutureAdapter<>());
+
+            dataStreamerBuffer.add(entries.iterator().next());
+
+            if(dataStreamerBuffer.size() % bufSize == 0){
+                keys = new GridConcurrentHashSet<>(bufSize, U.capacity(bufSize), 1);
+
+                for (DataStreamerEntry entry : dataStreamerBuffer)
+                    keys.add(new KeyCacheObjectWrapper(entry.getKey()));
+
+                List<DataStreamerEntry> dataStreamerEntries = new ArrayList<>();
+
+                for(int i = dataStreamerEntries.size() - bufSize; i < dataStreamerEntries.size(); i++)
+                    dataStreamerEntries.add(dataStreamerBuffer.get(i));
+
+                futuresPerBatch.get(futuresPerBatch.size() - 1).listen(rmvActiveFut);
+
+                activeFuts.add(futuresPerBatch.get(futuresPerBatch.size() - 1));
+
+                load0(dataStreamerEntries, futuresPerBatch.get(futuresPerBatch.size() - 1) , keys, 0);
+            }
+
+            return new IgniteCacheFutureImpl<>(futuresPerBatch.get(futuresPerBatch.size() - 1));//нужно, чтоб возвращал одну и ту же
+        }
 
         GridFutureAdapter<Object> resFut = new GridFutureAdapter<>();
 
-        Collection<IgniteInternalFuture<K>> bufferedFutures = new ArrayList<>();
-
-        if (additionPerKeyVal) {
-            if (composFutures.isEmpty())
-                composFutures.add(new GridCompoundFuture<K, V>());//коллекция буферов
-
-            composFutures.get(composFutures.size() - 1).add((IgniteInternalFuture)resFut);//всегда оперируем последним
-            //буфером как наиболее актуальным. тут добавляем в него новую фьючу
-
-            composEntries.add(entries.iterator().next());
-
-            bufferedFutures = composFutures.get(composFutures.size() - 1).futures();//здесь все фьючи из актуального буфера
-        }
-
         try {
-            if (bufferedFutures.size() == keyValueBufSize || !additionPerKeyVal) {//вариант когда надо стримить
-                Collection<KeyCacheObjectWrapper> keys = null;
+            resFut.listen(rmvActiveFut);
 
-                if (additionPerKeyVal) {
-                    for (IgniteInternalFuture innerFut : bufferedFutures) {
-                        innerFut.listen(rmvActiveFut);
+            activeFuts.add(resFut);
 
-                        activeFuts.add(innerFut);
-                    }
-                    if (composEntries.size() > 1) {//возможно проблема тут
-                        keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
 
-                        for (DataStreamerEntry entry : composEntries)
-                            keys.add(new KeyCacheObjectWrapper(entry.getKey()));
-                    }
-                    load0(composEntries, (GridFutureAdapter)composFutures.get(composFutures.size() - 1), keys, 0);
 
-                    composEntries.clear();
+            if (entries.size() > 1) {
+                keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
 
-                    composFutures.add(new GridCompoundFuture<K, V>());
-                }
-                else {
-                    resFut.listen(rmvActiveFut);
-
-                    activeFuts.add(resFut);
-
-                    if (entries.size() > 1) {
-                        keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
-
-                        for (DataStreamerEntry entry : entries)
-                            keys.add(new KeyCacheObjectWrapper(entry.getKey()));
-                    }
-                    load0(entries, resFut, keys, 0);
-                }
-                return new IgniteCacheFutureImpl<>(composFutures.get(composFutures.size() - 1));
+                for (DataStreamerEntry entry : entries)
+                    keys.add(new KeyCacheObjectWrapper(entry.getKey()));
             }
+            System.out.println("load");
+            load0(entries, resFut, keys, 0);
+
+
+            return new IgniteCacheFutureImpl<>(resFut);
         }
         catch (Throwable e) {
             resFut.onDone(e);
@@ -704,7 +702,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         finally {
             leaveBusy();
         }
-        return new IgniteCacheFutureImpl<>(resFut);
     }
 
     /** {@inheritDoc} */
@@ -1025,7 +1022,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
                     if (ctx.discovery().node(nodeId) == null) {
                         if (bufMappings.remove(nodeId, buf)) {
-                            final Buffer buf0 = buf;
+                            final Buffer buf0 = buf;//тут хранится нода и фьючи, которые на ней будут запущены
 
                             waitAffinityAndRun(new Runnable() {//запуск судя по всему тут происходит передача на ноду
                                 @Override public void run() {
