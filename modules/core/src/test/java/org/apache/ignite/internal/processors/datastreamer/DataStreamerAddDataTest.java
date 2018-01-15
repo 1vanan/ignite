@@ -4,12 +4,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteDataStreamer;
 import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
@@ -100,28 +98,33 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      *
      */
     public void testAddDataKeyValue() throws Exception {
-        for (int i = 1; i <= 6; i++) {
-            final int indx = i;
+        List<IgniteFuture> list = new ArrayList<>();
+        dataLdr.setBufStreamerSizePerKeyVal(20);
+        for (int i = 1; i <= 20; i++) {
+            final int indx = 0;
             System.out.println(i);
-            IgniteFuture igniteFuture = dataLdr.addData(i , i);
+            list.add(dataLdr.addData(i, i));
+            if (list.size() > 1 && i % 5 == 0) {
+                System.out.println("load");
 
-            igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
-                @Override
-                public void apply(IgniteFuture<?> igniteFuture) {
+                list.get(list.size() - 1).listen(new IgniteInClosure<IgniteFuture<?>>() {
+                    @Override
+                    public void apply(IgniteFuture<?> igniteFuture) {
 //                        igniteFuture.get();
-                    System.out.println("!!!~ done " + indx);
-                }
-            });
-//            igniteFuture.get();
+                        System.out.println("!!!~ done " + indx);
+                    }
+
+                });
+            }
+
+
         }
+//        for (IgniteFuture f :
+//            list) {
+//            System.out.println(f.isDone());
+//        }
+        dataLdr.close();
 
-//        dataLdr.close();
-//
-//        stopAllGrids();
-
-//        timeAfter = U.currentTimeMillis();
-
-//        System.out.println("Key/Value: " + (timeAfter - timeBefore));
     }
 
     /**
@@ -140,7 +143,6 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
             testList.add(new HashMap.SimpleEntry<>(i, i));
 
             timeAfter = U.currentTimeMillis();
-
 //            System.out.println("Collection: " + (timeAfter - timeBefore));
 //            igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
 //                @Override
@@ -160,6 +162,8 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
                 System.out.println("!!!~ done ");
             }
         });
+
+        System.out.println(igniteFuture.isCancelled());
 //        dataLdr.flush();
 //        System.out.println(igniteFuture.get());
     }
