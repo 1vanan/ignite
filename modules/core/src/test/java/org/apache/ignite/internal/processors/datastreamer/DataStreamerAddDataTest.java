@@ -99,24 +99,25 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      */
     public void testAddDataKeyValue() throws Exception {
         List<IgniteFuture> list = new ArrayList<>();
-        dataLdr.setBufStreamerSizePerKeyVal(20);
+        dataLdr.setBufStreamerSizePerKeyVal(5);
         for (int i = 1; i <= 20; i++) {
             final int indx = 0;
             System.out.println(i);
             list.add(dataLdr.addData(i, i));
             if (list.size() > 1 && i % 5 == 0) {
-                System.out.println("load");
 
                 list.get(list.size() - 1).listen(new IgniteInClosure<IgniteFuture<?>>() {
                     @Override
                     public void apply(IgniteFuture<?> igniteFuture) {
-//                        igniteFuture.get();
+                        igniteFuture.get();
                         System.out.println("!!!~ done " + indx);
                     }
 
                 });
             }
 
+            if(list.size() > 1)
+                System.out.println(list.get(list.size() - 1).equals(list.get(list.size() - 2)));
 
         }
 //        for (IgniteFuture f :

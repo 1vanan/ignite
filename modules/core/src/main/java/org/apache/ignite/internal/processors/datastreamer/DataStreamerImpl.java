@@ -635,63 +635,81 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     public IgniteFuture<?> addDataInternal(Collection<? extends DataStreamerEntry> entries) {
         enterBusy();
 
-        IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>> resFutPair;
+//        IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>> resFutPair;
 
-        List<DataStreamerEntry> entryBuffer;
+//        List<DataStreamerEntry> entryBuf;
 
-        boolean streamingDataPerKetValue = bufStreamerSizePerKeyVal != 0 && entries.size() == 1;
+        boolean streamingDataPerKetVal = bufStreamerSizePerKeyVal != 0 && entries.size() == 1;
 
-        if (streamingDataPerKetValue) {
+        if (streamingDataPerKetVal) {
             if (futListForStreamingKeyVal.isEmpty()) {
-                updateFutList(futListForStreamingKeyVal);
+                GridFutureAdapter<Object> resInternalFut = new GridFutureAdapter<>();
+
+                IgniteFuture resFut = new IgniteCacheFutureImpl<>(resInternalFut);
+
+                IgniteBiTuple futurePair = F.t(resFut, resInternalFut);
+
+                futurePair.put(resFut, resInternalFut);
+
+                futListForStreamingKeyVal.add(futurePair);
 
                 listOfBuffers.add(new ArrayList<DataStreamerEntry>());
 
             }
 
-            entryBuffer = listOfBuffers.get(listOfBuffers.size() - 1);
+//            entryBuf = listOfBuffers.get(listOfBuffers.size() - 1);
 
-            resFutPair = futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1);
+//            resFutPair = futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1);
 
-            entryBuffer.add(entries.iterator().next());
+            listOfBuffers.get(listOfBuffers.size() - 1).add(entries.iterator().next());
 
             try {
-                if (entryBuffer.size() == bufStreamerSizePerKeyVal) {
+                if (listOfBuffers.get(listOfBuffers.size() - 1).size() == bufStreamerSizePerKeyVal) {
 
-                    resFutPair.get2().listen(rmvActiveFut);
+                    futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().listen(rmvActiveFut);
 
-                    activeFuts.add(resFutPair.get2());
+                    activeFuts.add(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
 
                     Collection<KeyCacheObjectWrapper> keys = null;
 
-                    if (entryBuffer.size() > 1) {
+                    if (listOfBuffers.get(listOfBuffers.size() - 1).size() > 1) {
                         keys = new GridConcurrentHashSet<>(bufSize, U.capacity(bufSize), 1);
 
-                        for (DataStreamerEntry entry : entryBuffer)
+                        for (DataStreamerEntry entry : listOfBuffers.get(listOfBuffers.size() - 1))
                             keys.add(new KeyCacheObjectWrapper(entry.getKey()));
                     }
 
-                    load0(entryBuffer, resFutPair.get2(), keys, 0);
+                    load0(listOfBuffers.get(listOfBuffers.size() - 1), futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2(), keys, 0);
 
                     tryFlush();
 
+                    GridFutureAdapter<Object> resInternalFut = new GridFutureAdapter<>();
+
+                    IgniteFuture resFut = new IgniteCacheFutureImpl<>(resInternalFut);
+
+                    IgniteBiTuple futurePair = F.t(resFut, resInternalFut);
+
+                    futurePair.put(resFut, resInternalFut);
+
+                    futListForStreamingKeyVal.add(futurePair);
+
                     listOfBuffers.add(new ArrayList<DataStreamerEntry>());
 
-                    return resFutPair.get1();
+                    return futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 2).get1();
                 }
                 else
-                    return resFutPair.get1();
+                    return futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get1();
             }
             catch (Throwable e) {
-                resFutPair.get2().onDone(e);
+                futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().onDone(e);
 
                 if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
                     throw e;
 
-                return new IgniteCacheFutureImpl<>(resFutPair.get2());
+                return new IgniteCacheFutureImpl<>(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
             }
             finally {
-                updateFutList(futListForStreamingKeyVal);
+
 
                 leaveBusy();
             }
@@ -699,7 +717,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         return null;
     }
 
-    public void updateFutList(List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyValue){
+    public void updateFutList(List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyVal){
         GridFutureAdapter<Object> resInternalFut = new GridFutureAdapter<>();
 
         IgniteFuture resFut = new IgniteCacheFutureImpl<>(resInternalFut);
@@ -708,7 +726,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
         futurePair.put(resFut, resInternalFut);
 
-        futListForStreamingKeyValue.add(futurePair);
+        futListForStreamingKeyVal.add(futurePair);
     }
 
     /** {@inheritDoc} */
