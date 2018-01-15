@@ -377,7 +377,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         }
     }
 
-    public void setBufStreamerSizePerKeyVal(int size){
+    void setBatchSizePerKeyVal(int size){
         this.bufStreamerSizePerKeyVal = size;
     }
 
@@ -639,7 +639,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
 //        List<DataStreamerEntry> entryBuf;
 
-        boolean streamingDataPerKetVal = bufStreamerSizePerKeyVal != 0 && entries.size() == 1;
+        boolean streamingDataPerKetVal = bufStreamerSizePerKeyVal != 0 && entries.size() == 1 &&
+            entries.iterator().next().val != null;
 
         if (streamingDataPerKetVal) {
             if (futListForStreamingKeyVal.isEmpty()) {
@@ -663,13 +664,14 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
             listOfBuffers.get(listOfBuffers.size() - 1).add(entries.iterator().next());
 
+            if(!activeFuts.contains(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2())){
+                futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().listen(rmvActiveFut);
+
+                activeFuts.add(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
+            }
+
             try {
                 if (listOfBuffers.get(listOfBuffers.size() - 1).size() == bufStreamerSizePerKeyVal) {
-
-                    futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().listen(rmvActiveFut);
-
-                    activeFuts.add(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
-
                     Collection<KeyCacheObjectWrapper> keys = null;
 
                     if (listOfBuffers.get(listOfBuffers.size() - 1).size() > 1) {
@@ -709,12 +711,42 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                 return new IgniteCacheFutureImpl<>(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
             }
             finally {
-
-
                 leaveBusy();
             }
         }
-        return null;
+        else{
+            GridFutureAdapter<Object> resFut = new GridFutureAdapter<>();
+
+            try {
+                resFut.listen(rmvActiveFut);
+
+                activeFuts.add(resFut);
+
+                Collection<KeyCacheObjectWrapper> keys = null;
+
+                if (entries.size() > 1) {
+                    keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
+
+                    for (DataStreamerEntry entry : entries)
+                        keys.add(new KeyCacheObjectWrapper(entry.getKey()));
+                }
+
+                load0(entries, resFut, keys, 0);
+
+                return new IgniteCacheFutureImpl<>(resFut);
+            }
+            catch (Throwable e) {
+                resFut.onDone(e);
+
+                if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
+                    throw e;
+
+                return new IgniteCacheFutureImpl<>(resFut);
+            }
+            finally {
+                leaveBusy();
+            }
+        }
     }
 
     public void updateFutList(List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyVal){
@@ -741,7 +773,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         A.notNull(key, "key");
 
         if(bufStreamerSizePerKeyVal == 0)
-        setBufStreamerSizePerKeyVal(5);
+        setBatchSizePerKeyVal(5);
 
         if (val == null)
             checkSecurityPermission(SecurityPermission.CACHE_REMOVE);
@@ -1363,6 +1395,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     /** {@inheritDoc} */
     @Override public void close() throws CacheException {
+        tryFlush();
+
         close(false);
     }
 

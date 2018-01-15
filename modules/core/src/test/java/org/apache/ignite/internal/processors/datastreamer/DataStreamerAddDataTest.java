@@ -11,7 +11,6 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteFuture;
 import org.apache.ignite.lang.IgniteInClosure;
 import org.apache.ignite.testframework.GridStringLogger;
@@ -22,15 +21,6 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
     /** Config. */
     private IgniteConfiguration cfg;
-
-    /** Time before. */
-    private long timeBefore;
-
-    /** Time after. */
-    private long timeAfter;
-
-    /** Entry amount. */
-    private static final Integer ENTRY_AMOUNT = 10;
 
     /** String logger. */
     private GridStringLogger strLog = new GridStringLogger();
@@ -92,14 +82,12 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
         return cfg;
     }
 
-    final List<Integer> list = new ArrayList<>();
-
     /**
      *
      */
     public void testAddDataKeyValue() throws Exception {
         List<IgniteFuture> list = new ArrayList<>();
-        dataLdr.setBufStreamerSizePerKeyVal(5);
+        dataLdr.setBatchSizePerKeyVal(5);
         for (int i = 1; i <= 20; i++) {
             final int indx = 0;
             System.out.println(i);
@@ -140,10 +128,8 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 //            System.out.println(i);
 //            for (; i % ENTRY_AMOUNT != 0; i++)
 
-            timeBefore = U.currentTimeMillis();
             testList.add(new HashMap.SimpleEntry<>(i, i));
 
-            timeAfter = U.currentTimeMillis();
 //            System.out.println("Collection: " + (timeAfter - timeBefore));
 //            igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
 //                @Override
