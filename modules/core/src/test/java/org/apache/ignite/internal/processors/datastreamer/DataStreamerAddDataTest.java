@@ -30,7 +30,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
     private long timeAfter;
 
     /** Entry amount. */
-    private static final Integer ENTRY_AMOUNT = 10;
+    private static final Integer BATCH_SIZE = 500;
 
     /** String logger. */
     private GridStringLogger strLog = new GridStringLogger();
@@ -46,7 +46,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
     /** Server 2. */
     private static Ignite srv2;
-    private int DATA_AMOUNT = 100;
+    private int DATA_AMOUNT = 777;
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
@@ -61,6 +61,8 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
         client = startGrid("client");
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
+
+        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
     }
 
     /** {@inheritDoc} */
@@ -99,18 +101,17 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      */
     public void testAddDataKeyValue() throws Exception {
         List<IgniteFuture> list = new ArrayList<>();
-        dataLdr.setBufStreamerSizePerKeyVal(5);
-        for (int i = 1; i <= 20; i++) {
-            final int indx = 0;
+//        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
+        for (int i = 1; i <= DATA_AMOUNT; i++) {
             System.out.println(i);
             list.add(dataLdr.addData(i, i));
-            if (list.size() > 1 && i % 5 == 0) {
-
+            if (i % BATCH_SIZE == 1) {
+                System.out.println("listen " + i);
                 list.get(list.size() - 1).listen(new IgniteInClosure<IgniteFuture<?>>() {
                     @Override
                     public void apply(IgniteFuture<?> igniteFuture) {
                         igniteFuture.get();
-                        System.out.println("!!!~ done " + indx);
+                        System.out.println("!!!~ done ");
                     }
 
                 });
@@ -121,10 +122,12 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
         }
 //        for (IgniteFuture f :
-//            list) {
+//            buffer) {
 //            System.out.println(f.isDone());
 //        }
         dataLdr.close();
+
+        System.out.println(list.get(list.size() - 1).isDone());
 
     }
 
