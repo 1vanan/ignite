@@ -15,7 +15,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     List<IgniteFuture> futures = new ArrayList<>();
 
     /** Buffer size. */
-    private final int VALUES_PER_BATCH = 5;
+    private final int VALUES_PER_BATCH = 1000;
 
     /** Config. */
     private IgniteConfiguration cfg;
@@ -85,10 +85,8 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
      * Check than IgniteFuture will be returned per batch.
      */
     public void testSimilarFuturePerBatch() {
-        for (int i = 1; i <= DATA_AMOUNT; i++)
+        for (int i = 1; i <= DATA_AMOUNT; i++){
             futures.add(dataLdr.addData(i, i));
-
-
 
         if (futures.size() > 1) {
             if (futures.size() % VALUES_PER_BATCH == 1)
@@ -97,7 +95,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
                 assertTrue(futures.get(futures.size() - 1).equals(futures.get(futures.size() - 2)));
 
         }
-
+    }
         dataLdr.close();
     }
 
