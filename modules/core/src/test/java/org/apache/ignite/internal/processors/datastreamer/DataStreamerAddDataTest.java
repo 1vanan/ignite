@@ -121,7 +121,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
         }
 //        for (IgniteFuture f :
-//            list) {
+//            buffer) {
 //            System.out.println(f.isDone());
 //        }
         dataLdr.close();

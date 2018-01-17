@@ -124,11 +124,6 @@ import static org.apache.ignite.internal.GridTopic.TOPIC_DATASTREAM;
  */
 @SuppressWarnings("unchecked")
 public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed {
-    /** List of buffers for streaming per key/value. */
-    private List<List<DataStreamerEntry>> listOfBuffers = new ArrayList<>();
-
-    /** Future list for streaming per key/value. */
-    private List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyVal = new ArrayList<>();
 
     /** Buffer streamer size for streaming per key value. */
     private int bufStreamerSizePerKeyVal = 0;
@@ -300,6 +295,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             log = U.logger(ctx, logRef, DataStreamerImpl.class);
 
         CacheConfiguration ccfg = ctx.cache().cacheConfiguration(cacheName);
+
+        list.add(new ArrayList<DataStreamerEntry>());
+
+        GridFutureAdapter<Object> internalFuture = new GridFutureAdapter<>();
+
+        futListForStreamingKeyVal.add(F.t(new IgniteCacheFutureImpl(internalFuture), internalFuture));
 
         try {
             this.cacheObjCtx = ctx.cacheObjects().contextForCache(ccfg);
@@ -628,15 +629,16 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         return addDataInternal(Collections.singleton(new DataStreamerEntry(key, null)));
     }
 
-    List<DataStreamerEntry> list = new ArrayList<>(1000);
-    List<Object> list1 = new ArrayList<>(1000);
+    List<List<DataStreamerEntry>> list = new ArrayList<>(1000);
 
     GridFutureAdapter<Object> resInternalFut = new GridFutureAdapter<>();
 
     IgniteFuture resFut = new IgniteCacheFutureImpl<>(resInternalFut);
 
+    List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyVal = new ArrayList<>();
+
     public void clearList(){
-        list.clear();
+        list.get(list.size() - 1).clear();
     }
     /**
      * @param entries Entries.
@@ -644,52 +646,66 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
      */
     public IgniteFuture<?> addDataInternal(Collection<? extends DataStreamerEntry> entries) {
         enterBusy();
+        boolean streamingDataPerKetVal = bufStreamerSizePerKeyVal != 0 && entries.size() == 1 &&
+                entries.iterator().next().val != null;
+
+//        boolean fullBuf = list.get(list.size() - 1).size() == 1000;
 
         try {
-//            if (list.size() != 999) {
-//                list1.add(new Object());
-            DataStreamerEntry dataStreamerEntry = entries.iterator().next();
+            if (streamingDataPerKetVal) {
+                list.get(list.size() - 1).add(entries.iterator().next());
 
-            list.add(dataStreamerEntry);
+                if (list.get(list.size() - 1).size() == 1000) {
+                    futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().listen(rmvActiveFut);
 
-            if(list.size() == 1000){
-                resInternalFut.listen(rmvActiveFut);
+                    activeFuts.add(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
 
-                activeFuts.add(resInternalFut);
+                    Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(999, U.capacity(999), 1);
 
-                Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(999, U.capacity(999), 1);
+                    for (DataStreamerEntry e : list.get(list.size() - 1)) keys.add(new KeyCacheObjectWrapper(e.getKey()));
 
-                for (DataStreamerEntry e : list) keys.add(new KeyCacheObjectWrapper(e.getKey()));
+                    load0(list.get(list.size() - 1), futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2(), keys, 0);
+                }
 
-                load0(list, resInternalFut, keys, 0);
+                return futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get1();
+            } else {
+                GridFutureAdapter<Object> resFut = new GridFutureAdapter<>();
+
+                try {
+                    resFut.listen(rmvActiveFut);
+
+                    activeFuts.add(resFut);
+
+                    Collection<KeyCacheObjectWrapper> keys = null;
+
+                    if (entries.size() > 1) {
+                        keys = new GridConcurrentHashSet<>(entries.size(), U.capacity(entries.size()), 1);
+
+                        for (DataStreamerEntry entry : entries)
+                            keys.add(new KeyCacheObjectWrapper(entry.getKey()));
+                    }
+
+                    load0(entries, resFut, keys, 0);
+
+                    return new IgniteCacheFutureImpl<>(resFut);
+                } catch (Throwable e) {
+                    resFut.onDone(e);
+
+                    if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
+                        throw e;
+
+                    return new IgniteCacheFutureImpl<>(resFut);
+                }
+
             }
+        } /*catch (Throwable e) {
+            futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().onDone(e);
 
-            return resFut;
-        }
-// else {
-//                resInternalFut.listen(rmvActiveFut);
-//
-//                activeFuts.add(resInternalFut);
-//
-//                Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(999, U.capacity(999), 1);
-//
-//                for (DataStreamerEntry e : list) keys.add(new KeyCacheObjectWrapper(e.getKey()));
-//
-//                load0(list, resInternalFut, keys, 0);
-//
-//                tryFlush();
-//
-//                return resFut;
-//            }
-//        } catch (Throwable e) {
-//            futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().onDone(e);
-//
-//            if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
-//                throw e;
-//
-//            return new IgniteCacheFutureImpl<>(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
-//        }
-        finally {
+            if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
+                throw e;
+
+            return new IgniteCacheFutureImpl<>(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
+        }*/ finally {
             leaveBusy();
         }
     }

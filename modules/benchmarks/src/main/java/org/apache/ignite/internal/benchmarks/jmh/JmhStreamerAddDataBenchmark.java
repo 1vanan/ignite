@@ -41,7 +41,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     /**
      * Data amount.
      */
-    private static final int DATA_AMOUNT = 10;
+    private static final int DATA_AMOUNT = 1000;
 
     /** Client. */
     private Ignite srv1;
@@ -95,6 +95,8 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
 
         dataLdr = (DataStreamerImpl) client.dataStreamer(DEFAULT_CACHE_NAME);
 
+        dataLdr.setBufStreamerSizePerKeyVal(1000);
+
         for(int i = 0; i < DATA_AMOUNT; i++)
             StreamingMap.intMap.put(i, i);
     }
@@ -128,13 +130,13 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         dataLdr.clearList();
     }
 
-//    /**
-//     * Perfomance of addData per collection.
-//     */
-//    @Benchmark
-//    public void addDataCollection() {
-//        dataLdr.addData(testList);
-//    }
+    /**
+     * Perfomance of addData per collection.
+     */
+    @Benchmark
+    public void addDataCollection() {
+        dataLdr.addData(testList);
+    }
 
     /**
      * Perfomance of addData per key value.
@@ -147,9 +149,6 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         for (Map.Entry<Integer, Integer> entry : data.entrySet())
             dataLdr.addData(entry.getKey(), entry.getValue());
 
-//        for(int i = 0; i < DATA_AMOUNT; i++)
-//            dataLdr.addData(i, i);
-
     }
 
     /**
@@ -160,8 +159,8 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     public static void main(String[] args) throws RunnerException {
         ChainedOptionsBuilder builder = new OptionsBuilder()
                 .measurementIterations(20)
-                .operationsPerInvocation(1)
-                .warmupIterations(10)
+                .operationsPerInvocation(3)
+                .warmupIterations(7)
                 .forks(1)
                 .threads(1)
                 .include(JmhStreamerAddDataBenchmark.class.getSimpleName());
