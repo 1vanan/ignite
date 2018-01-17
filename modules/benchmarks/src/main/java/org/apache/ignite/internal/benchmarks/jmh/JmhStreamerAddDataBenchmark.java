@@ -5,6 +5,7 @@ import org.apache.ignite.IgniteDataStreamer;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.processors.datastreamer.DataStreamerImpl;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -30,7 +31,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     /**
      * Data loader.
      */
-    private IgniteDataStreamer<Integer, Integer> dataLdr;
+    private DataStreamerImpl<Integer, Integer> dataLdr;
 
     /**
      * Test list.
@@ -40,7 +41,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     /**
      * Data amount.
      */
-    private static final int DATA_AMOUNT = 1000;
+    private static final int DATA_AMOUNT = 10;
 
     /** Client. */
     private Ignite srv1;
@@ -92,7 +93,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
 
         prepareStreamingCollection();
 
-        dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME);
+        dataLdr = (DataStreamerImpl) client.dataStreamer(DEFAULT_CACHE_NAME);
 
         for(int i = 0; i < DATA_AMOUNT; i++)
             StreamingMap.intMap.put(i, i);
@@ -123,15 +124,17 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         srv2.cache(DEFAULT_CACHE_NAME).clear();
 
         dataLdr.flush();
+
+        dataLdr.clearList();
     }
 
-    /**
-     * Perfomance of addData per collection.
-     */
-    @Benchmark
-    public void addDataCollection() {
-        dataLdr.addData(testList);
-    }
+//    /**
+//     * Perfomance of addData per collection.
+//     */
+//    @Benchmark
+//    public void addDataCollection() {
+//        dataLdr.addData(testList);
+//    }
 
     /**
      * Perfomance of addData per key value.
@@ -144,6 +147,9 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         for (Map.Entry<Integer, Integer> entry : data.entrySet())
             dataLdr.addData(entry.getKey(), entry.getValue());
 
+//        for(int i = 0; i < DATA_AMOUNT; i++)
+//            dataLdr.addData(i, i);
+
     }
 
     /**
@@ -154,8 +160,8 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     public static void main(String[] args) throws RunnerException {
         ChainedOptionsBuilder builder = new OptionsBuilder()
                 .measurementIterations(20)
-                .operationsPerInvocation(3)
-                .warmupIterations(5)
+                .operationsPerInvocation(1)
+                .warmupIterations(10)
                 .forks(1)
                 .threads(1)
                 .include(JmhStreamerAddDataBenchmark.class.getSimpleName());

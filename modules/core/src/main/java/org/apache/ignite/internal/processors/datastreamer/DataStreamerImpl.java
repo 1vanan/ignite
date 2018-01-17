@@ -628,11 +628,16 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         return addDataInternal(Collections.singleton(new DataStreamerEntry(key, null)));
     }
 
-    List<DataStreamerEntry> list = new ArrayList<>();
+    List<DataStreamerEntry> list = new ArrayList<>(1000);
+    List<Object> list1 = new ArrayList<>(1000);
 
     GridFutureAdapter<Object> resInternalFut = new GridFutureAdapter<>();
 
     IgniteFuture resFut = new IgniteCacheFutureImpl<>(resInternalFut);
+
+    public void clearList(){
+        list.clear();
+    }
     /**
      * @param entries Entries.
      * @return Future.
@@ -641,11 +646,13 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         enterBusy();
 
         try {
-            if (list.size() != 999) {
-                list.add(entries.iterator().next());
+//            if (list.size() != 999) {
+//                list1.add(new Object());
+            DataStreamerEntry dataStreamerEntry = entries.iterator().next();
 
-                return resFut;
-            } else {
+            list.add(dataStreamerEntry);
+
+            if(list.size() == 1000){
                 resInternalFut.listen(rmvActiveFut);
 
                 activeFuts.add(resInternalFut);
@@ -655,19 +662,33 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                 for (DataStreamerEntry e : list) keys.add(new KeyCacheObjectWrapper(e.getKey()));
 
                 load0(list, resInternalFut, keys, 0);
-
-                tryFlush();
-
-                return resFut;
             }
-        } catch (Throwable e) {
-            futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().onDone(e);
 
-            if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
-                throw e;
-
-            return new IgniteCacheFutureImpl<>(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
+            return resFut;
         }
+// else {
+//                resInternalFut.listen(rmvActiveFut);
+//
+//                activeFuts.add(resInternalFut);
+//
+//                Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(999, U.capacity(999), 1);
+//
+//                for (DataStreamerEntry e : list) keys.add(new KeyCacheObjectWrapper(e.getKey()));
+//
+//                load0(list, resInternalFut, keys, 0);
+//
+//                tryFlush();
+//
+//                return resFut;
+//            }
+//        } catch (Throwable e) {
+//            futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().onDone(e);
+//
+//            if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
+//                throw e;
+//
+//            return new IgniteCacheFutureImpl<>(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
+//        }
         finally {
             leaveBusy();
         }
@@ -1319,6 +1340,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     /** {@inheritDoc} */
     @Override public void close() throws CacheException {
+        tryFlush();
+
         close(false);
     }
 
