@@ -21,7 +21,7 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     /**
      * Default cache name.
@@ -128,15 +128,17 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         dataLdr.flush();
 
         dataLdr.clearList();
+
+        dataLdr.clearFuts();
     }
 
-    /**
-     * Perfomance of addData per collection.
-     */
-    @Benchmark
-    public void addDataCollection() {
-        dataLdr.addData(testList);
-    }
+//    /**
+//     * Perfomance of addData per collection.
+//     */
+//    @Benchmark
+//    public void addDataCollection() {
+//        dataLdr.addData(testList);
+//    }
 
     /**
      * Perfomance of addData per key value.

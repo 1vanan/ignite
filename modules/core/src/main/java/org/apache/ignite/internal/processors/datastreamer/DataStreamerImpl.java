@@ -18,19 +18,8 @@
 package org.apache.ignite.internal.processors.datastreamer;
 
 import java.lang.reflect.Array;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.DelayQueue;
@@ -295,12 +284,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             log = U.logger(ctx, logRef, DataStreamerImpl.class);
 
         CacheConfiguration ccfg = ctx.cache().cacheConfiguration(cacheName);
-
-        list.add(new ArrayList<DataStreamerEntry>());
-
-        GridFutureAdapter<Object> internalFuture = new GridFutureAdapter<>();
-
-        futListForStreamingKeyVal.add(F.t(new IgniteCacheFutureImpl(internalFuture), internalFuture));
 
         try {
             this.cacheObjCtx = ctx.cacheObjects().contextForCache(ccfg);
@@ -629,16 +612,16 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         return addDataInternal(Collections.singleton(new DataStreamerEntry(key, null)));
     }
 
-    List<List<DataStreamerEntry>> list = new ArrayList<>(1000);
+    List<DataStreamerEntry> list = new ArrayList<>(bufStreamerSizePerKeyVal);
 
-    GridFutureAdapter<Object> resInternalFut = new GridFutureAdapter<>();
-
-    IgniteFuture resFut = new IgniteCacheFutureImpl<>(resInternalFut);
-
-    List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyVal = new ArrayList<>();
+    List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyVal = new LinkedList<>();
 
     public void clearList(){
-        list.get(list.size() - 1).clear();
+        list.clear();
+    }
+
+    public void clearFuts(){
+        futListForStreamingKeyVal.clear();
     }
     /**
      * @param entries Entries.
@@ -653,18 +636,35 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
         try {
             if (streamingDataPerKetVal) {
-                list.get(list.size() - 1).add(entries.iterator().next());
+                if(futListForStreamingKeyVal.isEmpty()){
+                    GridFutureAdapter<Object> internalFuture = new GridFutureAdapter<>();
 
-                if (list.get(list.size() - 1).size() == 1000) {
+                    futListForStreamingKeyVal.add(F.t(new IgniteCacheFutureImpl(internalFuture), internalFuture));
+                }
+
+                list.add(entries.iterator().next());
+
+                if (list.size() == bufStreamerSizePerKeyVal) {
                     futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2().listen(rmvActiveFut);
 
                     activeFuts.add(futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2());
 
-                    Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(999, U.capacity(999), 1);
+                    Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(bufStreamerSizePerKeyVal,
+                            U.capacity(bufStreamerSizePerKeyVal), 1);
 
-                    for (DataStreamerEntry e : list.get(list.size() - 1)) keys.add(new KeyCacheObjectWrapper(e.getKey()));
+                    for (DataStreamerEntry e : list) keys.add(new KeyCacheObjectWrapper(e.getKey()));
 
-                    load0(list.get(list.size() - 1), futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2(), keys, 0);
+                    load0(list, futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get2(), keys, 0);
+
+                    GridFutureAdapter<Object> resInternalFut = new GridFutureAdapter<>();
+
+                    IgniteFuture resFut = new IgniteCacheFutureImpl(resInternalFut);
+
+                    futListForStreamingKeyVal.add(F.t(resFut, resInternalFut));
+
+                    list.clear();
+
+                    return futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 2).get1();
                 }
 
                 return futListForStreamingKeyVal.get(futListForStreamingKeyVal.size() - 1).get1();

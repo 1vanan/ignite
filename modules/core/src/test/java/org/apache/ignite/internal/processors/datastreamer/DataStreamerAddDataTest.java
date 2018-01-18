@@ -30,7 +30,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
     private long timeAfter;
 
     /** Entry amount. */
-    private static final Integer ENTRY_AMOUNT = 10;
+    private static final Integer BATCH_SIZE = 1000;
 
     /** String logger. */
     private GridStringLogger strLog = new GridStringLogger();
@@ -46,7 +46,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
     /** Server 2. */
     private static Ignite srv2;
-    private int DATA_AMOUNT = 100;
+    private int DATA_AMOUNT = 3000;
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
@@ -99,13 +99,12 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      */
     public void testAddDataKeyValue() throws Exception {
         List<IgniteFuture> list = new ArrayList<>();
-        dataLdr.setBufStreamerSizePerKeyVal(5);
-        for (int i = 1; i <= 1000; i++) {
+        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
+        for (int i = 1; i <= DATA_AMOUNT; i++) {
             final int indx = 0;
             System.out.println(i);
             list.add(dataLdr.addData(i, i));
-            if (list.size() > 1 && i % 1000 == 0) {
-
+            if (list.size() > 1 && i % BATCH_SIZE == 0) {
                 list.get(list.size() - 1).listen(new IgniteInClosure<IgniteFuture<?>>() {
                     @Override
                     public void apply(IgniteFuture<?> igniteFuture) {

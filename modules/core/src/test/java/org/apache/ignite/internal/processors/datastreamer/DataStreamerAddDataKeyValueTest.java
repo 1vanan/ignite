@@ -52,8 +52,6 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
         dataLdr.setBufStreamerSizePerKeyVal(VALUES_PER_BATCH);
-
-        dataLdr.setBufStreamerSizePerKeyVal(1000);
     }
 
     /** {@inheritDoc} */
