@@ -11,6 +11,7 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteFuture;
 import org.apache.ignite.lang.IgniteInClosure;
 import org.apache.ignite.testframework.GridStringLogger;
@@ -21,6 +22,15 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
     /** Config. */
     private IgniteConfiguration cfg;
+
+    /** Time before. */
+    private long timeBefore;
+
+    /** Time after. */
+    private long timeAfter;
+
+    /** Entry amount. */
+    private static final Integer BATCH_SIZE = 500;
 
     /** String logger. */
     private GridStringLogger strLog = new GridStringLogger();
@@ -36,7 +46,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
     /** Server 2. */
     private static Ignite srv2;
-    private int DATA_AMOUNT = 100;
+    private int DATA_AMOUNT = 777;
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
@@ -51,6 +61,8 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
         client = startGrid("client");
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
+
+        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
     }
 
     /** {@inheritDoc} */
@@ -82,23 +94,24 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
         return cfg;
     }
 
+    final List<Integer> list = new ArrayList<>();
+
     /**
      *
      */
     public void testAddDataKeyValue() throws Exception {
         List<IgniteFuture> list = new ArrayList<>();
-        dataLdr.setBatchSizePerKeyVal(5);
-        for (int i = 1; i <= 20; i++) {
-            final int indx = 0;
+//        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
+        for (int i = 1; i <= DATA_AMOUNT; i++) {
             System.out.println(i);
             list.add(dataLdr.addData(i, i));
-            if (list.size() > 1 && i % 5 == 0) {
-
+            if (i % BATCH_SIZE == 1) {
+                System.out.println("listen " + i);
                 list.get(list.size() - 1).listen(new IgniteInClosure<IgniteFuture<?>>() {
                     @Override
                     public void apply(IgniteFuture<?> igniteFuture) {
                         igniteFuture.get();
-                        System.out.println("!!!~ done " + indx);
+                        System.out.println("!!!~ done ");
                     }
 
                 });
@@ -109,10 +122,12 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
         }
 //        for (IgniteFuture f :
-//            list) {
+//            buffer) {
 //            System.out.println(f.isDone());
 //        }
         dataLdr.close();
+
+        System.out.println(list.get(list.size() - 1).isDone());
 
     }
 
@@ -128,8 +143,10 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 //            System.out.println(i);
 //            for (; i % ENTRY_AMOUNT != 0; i++)
 
+            timeBefore = U.currentTimeMillis();
             testList.add(new HashMap.SimpleEntry<>(i, i));
 
+            timeAfter = U.currentTimeMillis();
 //            System.out.println("Collection: " + (timeAfter - timeBefore));
 //            igniteFuture.listen(new IgniteInClosure<IgniteFuture<?>>() {
 //                @Override

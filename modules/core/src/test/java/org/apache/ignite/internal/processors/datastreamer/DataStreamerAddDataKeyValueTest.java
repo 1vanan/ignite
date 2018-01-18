@@ -1,6 +1,7 @@
 package org.apache.ignite.internal.processors.datastreamer;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
@@ -14,8 +15,10 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** List of launching futures. */
     List<IgniteFuture> futures = new ArrayList<>();
 
+    private int DATA_AMOUNT = 3000;
+
     /** Buffer size. */
-    private final int VALUES_PER_BATCH = 5;
+    private final int VALUES_PER_BATCH = 1000;
 
     /** Config. */
     private IgniteConfiguration cfg;
@@ -35,8 +38,6 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** Server 2. */
     private static Ignite srv2;
 
-    private int DATA_AMOUNT = 100;
-
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
         super.beforeTestsStarted();
@@ -51,7 +52,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
-        dataLdr.setBatchSizePerKeyVal(VALUES_PER_BATCH);
+        dataLdr.setBufStreamerSizePerKeyVal(VALUES_PER_BATCH);
     }
 
     /** {@inheritDoc} */
@@ -59,6 +60,13 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         super.afterTestsStopped();
 
         stopAllGrids();
+    }
+
+    @Override
+    protected void afterTest() throws Exception {
+        futures.clear();
+
+        super.afterTest();
     }
 
     /** {@inheritDoc} */
@@ -83,19 +91,17 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
      * Check than IgniteFuture will be returned per batch.
      */
     public void testSimilarFuturePerBatch() {
-        for (int i = 1; i <= DATA_AMOUNT; i++)
+        for (int i = 1; i <= DATA_AMOUNT; i++){
             futures.add(dataLdr.addData(i, i));
 
+            if (futures.size() > 1) {
+                if (futures.size() % VALUES_PER_BATCH == 1)
+                    assertFalse(futures.get(futures.size() - 1).equals(futures.get(futures.size() - 2)));
+                else
+                    assertTrue(futures.get(futures.size() - 1).equals(futures.get(futures.size() - 2)));
 
-
-        if (futures.size() > 1) {
-            if (futures.size() % VALUES_PER_BATCH == 1)
-                assertFalse(futures.get(futures.size() - 1).equals(futures.get(futures.size() - 2)));
-            else
-                assertTrue(futures.get(futures.size() - 1).equals(futures.get(futures.size() - 2)));
-
+            }
         }
-
         dataLdr.close();
     }
 
@@ -109,15 +115,21 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         dataLdr.close();
 
         for (IgniteFuture future :
-            futures)
+                futures)
             assertTrue(future.isDone());
     }
 
     /**
-     *удалять имхо должен моментально, так как пока соберется батч, станет уже неактуально
+     *Check that amount of batches is appropriate.
      */
-    public void testRemoveData(){
+    public void testBatchAmount(){
+        HashSet uniqFut = new HashSet();
+
+        double batchAmount = Math.ceil((double)DATA_AMOUNT/VALUES_PER_BATCH);
+
         for (int i = 1; i <= DATA_AMOUNT; i++)
-            dataLdr.removeData(i);
+            uniqFut.add(dataLdr.addData(i, i));
+
+        assertTrue(uniqFut.size() == batchAmount);
     }
 }
