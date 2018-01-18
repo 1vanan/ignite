@@ -619,7 +619,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     List<DataStreamerEntry> list = new ArrayList<>(bufStreamerSizePerKeyVal);
 
-    List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingBatch = new LinkedList<>();
+    List<IgniteBiTuple<IgniteCacheFutureImpl, GridFutureAdapter<Object>>> futListForStreamingBatch = new LinkedList<>();
 
     public void clearList(){
         list.clear();
@@ -696,7 +696,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     }
 
     public void refreshBatchBuffers(GridFutureAdapter<Object> resInternalFut){
-        IgniteFuture resFut = new IgniteCacheFutureImpl(resInternalFut);
+        IgniteCacheFutureImpl resFut = new IgniteCacheFutureImpl(resInternalFut);
 
         futListForStreamingBatch.add(F.t(resFut, resInternalFut));
 
