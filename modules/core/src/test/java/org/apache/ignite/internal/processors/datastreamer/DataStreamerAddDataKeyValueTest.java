@@ -15,6 +15,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** List of launching futures. */
     List<IgniteFuture> futures = new ArrayList<>();
 
+    /** Data amount. */
     private int DATA_AMOUNT = 3000;
 
     /** Buffer size. */
