@@ -154,6 +154,8 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
             dataLdr.addData(entry.getKey(), entry.getValue());
     }
 
+
+
     /**
      * Launch benchmark.
      *
