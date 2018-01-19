@@ -89,7 +89,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     }
 
     /**
-     * Check than IgniteFuture will be returned per batch.
+     * Check that IgniteFuture will be returned per batch.
      */
     public void testSimilarFuturePerBatch() {
         for (int i = 1; i <= DATA_AMOUNT; i++){
@@ -109,7 +109,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /**
      * Check that all IgniteFutures that should be streamed are done.
      */
-    public void testallFuturesAreDone() {
+    public void testAllFuturesAreDone() {
         for (int i = 1; i <= DATA_AMOUNT; i++)
             futures.add(dataLdr.addData(i, i));
 
@@ -123,7 +123,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /**
      *Check that amount of batches is appropriate.
      */
-    public void testBatchAmount(){
+    public void testFuturesAmount(){
         HashSet uniqFut = new HashSet();
 
         double batchAmount = Math.ceil((double)DATA_AMOUNT/VALUES_PER_BATCH);

@@ -43,7 +43,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     private static final int DATA_AMOUNT = 1000;
 
     /** Batch size. */
-    private static final int BATCH_SIZE = 5;
+    private static final int BATCH_SIZE = 1000;
 
     /** Client. */
     private Ignite srv1;

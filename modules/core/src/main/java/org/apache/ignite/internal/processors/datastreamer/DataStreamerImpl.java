@@ -116,7 +116,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     /** List of buffers for streaming per key/value. */
     private List<List<DataStreamerEntry>> listOfBuffers = new ArrayList<>();
 
-    /** Future list for streaming per key/value. */
+    /** Future streamingDataPerBatch for streaming per key/value. */
     private List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyVal = new ArrayList<>();
 
     /** Buffer streamer size for streaming per key value. */
@@ -617,16 +617,18 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         return addDataInternal(Collections.singleton(new DataStreamerEntry(key, null)));
     }
 
-    List<DataStreamerEntry> list = new ArrayList<>(bufStreamerSizePerKeyVal);
+    private List<DataStreamerEntry> streamingDataPerBatch = new ArrayList<>(bufStreamerSizePerKeyVal);
 
-    List<IgniteBiTuple<IgniteCacheFutureImpl, GridFutureAdapter<Object>>> futListForStreamingBatch = new LinkedList<>();
+    private List<IgniteBiTuple<IgniteCacheFutureImpl, GridFutureAdapter<Object>>> futuresPerBatch = new LinkedList<>();
+
+    boolean streamingPerBatch = false;
 
     public void clearList(){
-        list.clear();
+        streamingDataPerBatch.clear();
     }
 
     public void clearFuts(){
-        futListForStreamingBatch.clear();
+        futuresPerBatch.clear();
     }
     /**
      * @param entries Entries.
@@ -635,34 +637,34 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     public IgniteFuture<?> addDataInternal(Collection<? extends DataStreamerEntry> entries) {
         enterBusy();
 
-        boolean streamingDataPerBatch = bufStreamerSizePerKeyVal > 1 && entries.size() == 1 &&
+        streamingPerBatch = bufStreamerSizePerKeyVal > 0 && entries.size() == 1 &&
                 entries.iterator().next().val != null;
 
         GridFutureAdapter<Object> internalFut = new GridFutureAdapter<>();
 
         try {
-            if (streamingDataPerBatch) {
-                if (futListForStreamingBatch.isEmpty())
-                    futListForStreamingBatch.add(F.t(new IgniteCacheFutureImpl(internalFut), internalFut));
+            if (streamingPerBatch) {
+                if (futuresPerBatch.isEmpty())
+                    futuresPerBatch.add(F.t(new IgniteCacheFutureImpl(internalFut), internalFut));
 
 
-                list.add(entries.iterator().next());
+                streamingDataPerBatch.add(entries.iterator().next());
 
-                if (list.size() == 1) {
-                    futListForStreamingBatch.get(futListForStreamingBatch.size() - 1).get2().listen(rmvActiveFut);
+                if (streamingDataPerBatch.size() == 1) {
+                    futuresPerBatch.get(futuresPerBatch.size() - 1).get2().listen(rmvActiveFut);
 
-                    activeFuts.add(futListForStreamingBatch.get(futListForStreamingBatch.size() - 1).get2());
+                    activeFuts.add(futuresPerBatch.get(futuresPerBatch.size() - 1).get2());
                 }
 
-                if (list.size() == bufStreamerSizePerKeyVal) {
+                if (streamingDataPerBatch.size() == bufStreamerSizePerKeyVal) {
                     loadBatch();
 
                     refreshBatchBuffers(internalFut);
 
-                    return futListForStreamingBatch.get(futListForStreamingBatch.size() - 2).get1();
+                    return futuresPerBatch.get(futuresPerBatch.size() - 2).get1();
                 }
 
-                return futListForStreamingBatch.get(futListForStreamingBatch.size() - 1).get1();
+                return futuresPerBatch.get(futuresPerBatch.size() - 1).get1();
 
             } else {
                 internalFut.listen(rmvActiveFut);
@@ -698,18 +700,18 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     public void refreshBatchBuffers(GridFutureAdapter<Object> resInternalFut){
         IgniteCacheFutureImpl resFut = new IgniteCacheFutureImpl(resInternalFut);
 
-        futListForStreamingBatch.add(F.t(resFut, resInternalFut));
+        futuresPerBatch.add(F.t(resFut, resInternalFut));
 
-        list.clear();
+        streamingDataPerBatch.clear();
     }
 
     public void loadBatch(){
         Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(bufStreamerSizePerKeyVal,
                 U.capacity(bufStreamerSizePerKeyVal), 1);
 
-        for (DataStreamerEntry e : list) keys.add(new KeyCacheObjectWrapper(e.getKey()));
+        for (DataStreamerEntry e : streamingDataPerBatch) keys.add(new KeyCacheObjectWrapper(e.getKey()));
 
-        load0(list, futListForStreamingBatch.get(futListForStreamingBatch.size() - 1).get2(), keys, 0);
+        load0(streamingDataPerBatch, futuresPerBatch.get(futuresPerBatch.size() - 1).get2(), keys, 0);
     }
 
     /** {@inheritDoc} */
@@ -722,9 +724,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     /** {@inheritDoc} */
     @Override public IgniteFuture<?> addData(K key, V val) {
         A.notNull(key, "key");
-
-        if(bufStreamerSizePerKeyVal == 0)
-        setBufStreamerSizePerKeyVal(5);
 
         if (val == null)
             checkSecurityPermission(SecurityPermission.CACHE_REMOVE);
@@ -1346,6 +1345,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     /** {@inheritDoc} */
     @Override public void close() throws CacheException {
+        if(streamingPerBatch) {
+            loadBatch();
+
+            tryFlush();
+        }
+
         close(false);
     }
 
