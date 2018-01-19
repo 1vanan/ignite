@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.ignite.internal.processors.datastreamer;
 
 import java.util.ArrayList;
@@ -11,15 +28,18 @@ import org.apache.ignite.lang.IgniteFuture;
 import org.apache.ignite.testframework.GridStringLogger;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
+/**
+ *
+ */
 public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** List of launching futures. */
-    List<IgniteFuture> futures = new ArrayList<>();
+    private List<IgniteFuture> futures = new ArrayList<>();
 
     /** Data amount. */
     private int DATA_AMOUNT = 3000;
 
     /** Buffer size. */
-    private final int VALUES_PER_BATCH = 1000;
+    private final int VALUES_PER_BATCH = 777;
 
     /** Config. */
     private IgniteConfiguration cfg;
@@ -30,26 +50,15 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** Ignite data streamer. */
     private static DataStreamerImpl<Integer, Integer> dataLdr;
 
-    /** Client. */
-    private static Ignite client;
-
-    /** Server 1. */
-    private static Ignite srv1;
-
-    /** Server 2. */
-    private static Ignite srv2;
-
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
         super.beforeTestsStarted();
 
-        System.out.println("start1");
+        Ignite srv1 = startGrid("server1");
 
-        srv1 = startGrid("server1");
+        Ignite srv2 = startGrid("server2");
 
-        srv2 = startGrid("server2");
-
-        client = startGrid("client");
+        Ignite client = startGrid("client");
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
@@ -63,8 +72,8 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         stopAllGrids();
     }
 
-    @Override
-    protected void afterTest() throws Exception {
+    /** {@inheritDoc} */
+    @Override protected void afterTest() throws Exception {
         futures.clear();
 
         super.afterTest();
@@ -92,7 +101,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
      * Check that IgniteFuture will be returned per batch.
      */
     public void testSimilarFuturePerBatch() {
-        for (int i = 1; i <= DATA_AMOUNT; i++){
+        for (int i = 1; i <= DATA_AMOUNT; i++) {
             futures.add(dataLdr.addData(i, i));
 
             if (futures.size() > 1) {
@@ -116,17 +125,17 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         dataLdr.close();
 
         for (IgniteFuture future :
-                futures)
+            futures)
             assertTrue(future.isDone());
     }
 
     /**
-     *Check that amount of batches is appropriate.
+     * Check that amount of batches is appropriate.
      */
-    public void testFuturesAmount(){
+    public void testFuturesAmount() {
         HashSet uniqFut = new HashSet();
 
-        double batchAmount = Math.ceil((double)DATA_AMOUNT/VALUES_PER_BATCH);
+        double batchAmount = Math.ceil((double)DATA_AMOUNT / VALUES_PER_BATCH);
 
         for (int i = 1; i <= DATA_AMOUNT; i++)
             uniqFut.add(dataLdr.addData(i, i));

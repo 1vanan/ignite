@@ -646,7 +646,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                 if (futuresPerBatch.isEmpty())
                     futuresPerBatch.add(F.t(new IgniteCacheFutureImpl(internalFut), internalFut));
 
-
                 streamingDataPerBatch.add(entries.iterator().next());
 
                 if (streamingDataPerBatch.size() == 1) {
@@ -696,6 +695,11 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         }
     }
 
+    /**
+     *
+     *
+     * @param resInternalFut Response internal future.
+     */
     private void refreshBatchBuffers(GridFutureAdapter<Object> resInternalFut){
         IgniteCacheFutureImpl resFut = new IgniteCacheFutureImpl(resInternalFut);
 
@@ -704,6 +708,9 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         streamingDataPerBatch.clear();
     }
 
+    /**
+     * Load batch of DataStreamerEntry from buffer streamingDataPerBatch.
+     */
     private void loadBatch(){
         Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(bufStreamerSizePerKeyVal,
                 U.capacity(bufStreamerSizePerKeyVal), 1);
