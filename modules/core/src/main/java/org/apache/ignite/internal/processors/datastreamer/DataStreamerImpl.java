@@ -113,14 +113,17 @@ import static org.apache.ignite.internal.GridTopic.TOPIC_DATASTREAM;
  */
 @SuppressWarnings("unchecked")
 public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed {
-    /** List of buffers for streaming per key/value. */
-    private List<List<DataStreamerEntry>> listOfBuffers = new ArrayList<>();
-
-    /** Future streamingDataPerBatch for streaming per key/value. */
-    private List<IgniteBiTuple<IgniteFuture, GridFutureAdapter<Object>>> futListForStreamingKeyVal = new ArrayList<>();
-
-    /** Buffer streamer size for streaming per key value. */
+    /** Buffer size for streaming per key value. */
     private int bufStreamerSizePerKeyVal = 0;
+
+    /** Streaming entries per batch. */
+    private List<DataStreamerEntry> streamingDataPerBatch = new LinkedList<>();
+
+    /** Futures using in streaming data per batch. */
+    private List<IgniteBiTuple<IgniteCacheFutureImpl, GridFutureAdapter<Object>>> futuresPerBatch = new LinkedList<>();
+
+    /** True if data streams per batch rather than per key/value. */
+    private boolean streamingPerBatch = false;
 
     /** Isolated receiver. */
     private static final StreamReceiver ISOLATED_UPDATER = new IsolatedUpdater();
@@ -617,11 +620,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         return addDataInternal(Collections.singleton(new DataStreamerEntry(key, null)));
     }
 
-    private List<DataStreamerEntry> streamingDataPerBatch = new ArrayList<>(bufStreamerSizePerKeyVal);
 
-    private List<IgniteBiTuple<IgniteCacheFutureImpl, GridFutureAdapter<Object>>> futuresPerBatch = new LinkedList<>();
-
-    boolean streamingPerBatch = false;
 
     public void clearList(){
         streamingDataPerBatch.clear();
@@ -697,7 +696,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         }
     }
 
-    public void refreshBatchBuffers(GridFutureAdapter<Object> resInternalFut){
+    private void refreshBatchBuffers(GridFutureAdapter<Object> resInternalFut){
         IgniteCacheFutureImpl resFut = new IgniteCacheFutureImpl(resInternalFut);
 
         futuresPerBatch.add(F.t(resFut, resInternalFut));
@@ -705,7 +704,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         streamingDataPerBatch.clear();
     }
 
-    public void loadBatch(){
+    private void loadBatch(){
         Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(bufStreamerSizePerKeyVal,
                 U.capacity(bufStreamerSizePerKeyVal), 1);
 
