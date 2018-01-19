@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.ignite.internal.benchmarks.jmh;
 
 import org.apache.ignite.Ignite;
@@ -18,32 +35,27 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 
+/**
+ *
+ */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
-    /**
-     * Default cache name.
-     */
+    /** Default cache name.*/
     private static final String DEFAULT_CACHE_NAME = "default";
 
-    /**
-     * Data loader.
-     */
+    /** Data loader.*/
     private DataStreamerImpl<Integer, Integer> dataLdr;
 
-    /**
-     * Test list.
-     */
+    /** Test list.*/
     private static Collection<AbstractMap.SimpleEntry<Integer, Integer>> testList = new ArrayList<>();
 
-    /**
-     * Data amount.
-     */
+    /** Data amount.*/
     private static final int DATA_AMOUNT = 1000;
 
     /** Batch size. */
-    private static final int BATCH_SIZE = 5;
+    private static final int BATCH_SIZE = 1000;
 
     /** Client. */
     private Ignite srv1;
@@ -57,8 +69,8 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
      */
     private static IgniteConfiguration getConfiguration(String cfgName, boolean isClient) {
         IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName(cfgName);
 
+        cfg.setIgniteInstanceName(cfgName);
         cfg.setCacheConfiguration(defaultCacheConfiguration());
 
         if (isClient)
@@ -72,6 +84,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
      */
     private static CacheConfiguration defaultCacheConfiguration() {
         CacheConfiguration cfg = new CacheConfiguration(DEFAULT_CACHE_NAME);
+
         cfg.setAtomicityMode(TRANSACTIONAL);
         cfg.setWriteSynchronizationMode(FULL_SYNC);
 
@@ -97,7 +110,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
 
         dataLdr = (DataStreamerImpl) client.dataStreamer(DEFAULT_CACHE_NAME);
 
-        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
+        dataLdr.perBatchBufferSize(BATCH_SIZE);
 
         for(int i = 0; i < DATA_AMOUNT; i++)
             StreamingMap.intMap.put(i, i);
@@ -128,10 +141,6 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         srv2.cache(DEFAULT_CACHE_NAME).clear();
 
         dataLdr.flush();
-
-        dataLdr.clearList();
-
-        dataLdr.clearFuts();
     }
 
 //    /**

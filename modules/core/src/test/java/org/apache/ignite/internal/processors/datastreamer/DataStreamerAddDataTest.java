@@ -46,7 +46,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
     /** Server 2. */
     private static Ignite srv2;
-    private int DATA_AMOUNT = 777;
+    private int DATA_AMOUNT = 501;
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
@@ -62,7 +62,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
-        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
+//        dataLdr.setBufSizePerBatch(BATCH_SIZE);
     }
 
     /** {@inheritDoc} */
@@ -101,12 +101,11 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      */
     public void testAddDataKeyValue() throws Exception {
         List<IgniteFuture> list = new ArrayList<>();
-//        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
-        for (int i = 1; i <= DATA_AMOUNT; i++) {
+//        dataLdr.setBufSizePerBatch(BATCH_SIZE);
+        for (int i = 1; i <= 1; i++) {
             System.out.println(i);
             list.add(dataLdr.addData(i, i));
-            if (i % BATCH_SIZE == 1) {
-                System.out.println("listen " + i);
+//            if (i % BATCH_SIZE == 1) {
                 list.get(list.size() - 1).listen(new IgniteInClosure<IgniteFuture<?>>() {
                     @Override
                     public void apply(IgniteFuture<?> igniteFuture) {
@@ -115,17 +114,18 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
                     }
 
                 });
-            }
-
-            if(list.size() > 1)
-                System.out.println(list.get(list.size() - 1).equals(list.get(list.size() - 2)));
+//            }
+//
+//            if(streamingDataPerBatch.size() > 1)
+//                System.out.println(streamingDataPerBatch.get(streamingDataPerBatch.size() - 1).equals(streamingDataPerBatch.get(streamingDataPerBatch.size() - 2)));
 
         }
 //        for (IgniteFuture f :
 //            buffer) {
 //            System.out.println(f.isDone());
 //        }
-        dataLdr.close();
+
+//        dataLdr.close();
 
         System.out.println(list.get(list.size() - 1).isDone());
 
