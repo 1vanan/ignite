@@ -114,7 +114,7 @@ import static org.apache.ignite.internal.GridTopic.TOPIC_DATASTREAM;
 @SuppressWarnings("unchecked")
 public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed {
     /** Buffer size for streaming per key value. */
-    private int bufStreamerSizePerKeyVal = 0;
+    private int bufStreamerSizePerKeyVal = 1;
 
     /** Streaming entries per batch. */
     private List<DataStreamerEntry> streamingDataPerBatch = new LinkedList<>();
@@ -636,8 +636,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     public IgniteFuture<?> addDataInternal(Collection<? extends DataStreamerEntry> entries) {
         enterBusy();
 
-        streamingPerBatch = bufStreamerSizePerKeyVal > 0 && entries.size() == 1 &&
-                entries.iterator().next().val != null;
+        streamingPerBatch = bufStreamerSizePerKeyVal > 1 && entries.size() == 1 &&
+            entries.iterator().next().val != null;
 
         GridFutureAdapter<Object> internalFut = new GridFutureAdapter<>();
 
@@ -657,14 +657,15 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                 if (streamingDataPerBatch.size() == bufStreamerSizePerKeyVal) {
                     loadBatch();
 
-                    refreshBatchBuffers(internalFut);
+                    refreshBatchBuffers(new GridFutureAdapter<>());
 
                     return futuresPerBatch.get(futuresPerBatch.size() - 2).get1();
                 }
 
                 return futuresPerBatch.get(futuresPerBatch.size() - 1).get1();
 
-            } else {
+            }
+            else {//часть тестов для обычного K/V идут в многопоточном режиме -->testRemapOnTopologyChangeDuringUpdatePreparation, поэтому надо выделять отдельно
                 internalFut.listen(rmvActiveFut);
 
                 activeFuts.add(internalFut);
@@ -683,14 +684,26 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                 return new IgniteCacheFutureImpl<>(internalFut);
             }
 
-        } catch (Throwable e) {
-            internalFut.onDone(e);
+        }
+        catch (Throwable e) {
+            if (streamingPerBatch) {
+                futuresPerBatch.get(futuresPerBatch.size() - 1).get2().onDone(e);
 
-            if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
-                throw e;
+                if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
+                    throw e;
 
-            return new IgniteCacheFutureImpl<>(internalFut);
-        } finally {
+                return futuresPerBatch.get(futuresPerBatch.size() - 1).get1();
+            }
+            else {
+                internalFut.onDone(e);
+
+                if (e instanceof Error || e instanceof IgniteDataStreamerTimeoutException)
+                    throw e;
+
+                return new IgniteCacheFutureImpl<>(internalFut);
+            }
+        }
+        finally {
             leaveBusy();
         }
     }
@@ -715,7 +728,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(bufStreamerSizePerKeyVal,
                 U.capacity(bufStreamerSizePerKeyVal), 1);
 
-        for (DataStreamerEntry e : streamingDataPerBatch) keys.add(new KeyCacheObjectWrapper(e.getKey()));
+            for (DataStreamerEntry e : streamingDataPerBatch)
+                keys.add(new KeyCacheObjectWrapper(e.getKey()));
 
         load0(streamingDataPerBatch, futuresPerBatch.get(futuresPerBatch.size() - 1).get2(), keys, 0);
     }
