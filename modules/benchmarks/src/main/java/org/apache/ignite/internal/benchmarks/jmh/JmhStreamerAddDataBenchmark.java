@@ -110,7 +110,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
 
         dataLdr = (DataStreamerImpl) client.dataStreamer(DEFAULT_CACHE_NAME);
 
-        dataLdr.setBufStreamerSizePerKeyVal(BATCH_SIZE);
+        dataLdr.setBufStreamerSizePerBatch(BATCH_SIZE);
 
         for(int i = 0; i < DATA_AMOUNT; i++)
             StreamingMap.intMap.put(i, i);
@@ -141,10 +141,6 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         srv2.cache(DEFAULT_CACHE_NAME).clear();
 
         dataLdr.flush();
-
-        dataLdr.clearList();
-
-        dataLdr.clearFuts();
     }
 
 //    /**

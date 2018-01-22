@@ -62,7 +62,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
-        dataLdr.setBufStreamerSizePerKeyVal(VALUES_PER_BATCH);
+        dataLdr.setBufStreamerSizePerBatch(VALUES_PER_BATCH);
     }
 
     /** {@inheritDoc} */
@@ -75,6 +75,8 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** {@inheritDoc} */
     @Override protected void afterTest() throws Exception {
         futures.clear();
+
+        dataLdr.flush();
 
         super.afterTest();
     }
@@ -112,7 +114,6 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
 
             }
         }
-        dataLdr.close();
     }
 
     /**
@@ -122,7 +123,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         for (int i = 1; i <= DATA_AMOUNT; i++)
             futures.add(dataLdr.addData(i, i));
 
-        dataLdr.close();
+        dataLdr.flush();
 
         for (IgniteFuture future :
             futures)

@@ -113,8 +113,8 @@ import static org.apache.ignite.internal.GridTopic.TOPIC_DATASTREAM;
  */
 @SuppressWarnings("unchecked")
 public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed {
-    /** Buffer size for streaming per key value. */
-    private int bufStreamerSizePerKeyVal = 1;
+    /** Buffer size for streaming per batch. */
+    private int bufStreamerSizePerBatch = 1;
 
     /** Streaming entries per batch. */
     private List<DataStreamerEntry> streamingDataPerBatch = new LinkedList<>();
@@ -369,8 +369,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         }
     }
 
-    public void setBufStreamerSizePerKeyVal(int size){
-        this.bufStreamerSizePerKeyVal = size;
+    public void setBufStreamerSizePerBatch(int size){
+        this.bufStreamerSizePerBatch = size;
     }
 
     /**
@@ -620,13 +620,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         return addDataInternal(Collections.singleton(new DataStreamerEntry(key, null)));
     }
 
-
-
-    public void clearList(){
+    /**
+     * Clear buffer collections in case of streaming data per batch.
+     */
+    private void clearBuf(){
         streamingDataPerBatch.clear();
-    }
 
-    public void clearFuts(){
         futuresPerBatch.clear();
     }
     /**
@@ -636,7 +635,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     public IgniteFuture<?> addDataInternal(Collection<? extends DataStreamerEntry> entries) {
         enterBusy();
 
-        streamingPerBatch = bufStreamerSizePerKeyVal > 1 && entries.size() == 1 &&
+        streamingPerBatch = bufStreamerSizePerBatch > 1 && entries.size() == 1 &&
             entries.iterator().next().val != null;
 
         GridFutureAdapter<Object> internalFut = new GridFutureAdapter<>();
@@ -654,7 +653,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                     activeFuts.add(futuresPerBatch.get(futuresPerBatch.size() - 1).get2());
                 }
 
-                if (streamingDataPerBatch.size() == bufStreamerSizePerKeyVal) {
+                if (streamingDataPerBatch.size() == bufStreamerSizePerBatch) {
                     loadBatch();
 
                     refreshBatchBuffers(new GridFutureAdapter<>());
@@ -725,8 +724,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
      * Load batch of DataStreamerEntry from buffer streamingDataPerBatch.
      */
     private void loadBatch(){
-        Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(bufStreamerSizePerKeyVal,
-                U.capacity(bufStreamerSizePerKeyVal), 1);
+        Collection<KeyCacheObjectWrapper> keys = new GridConcurrentHashSet<>(bufStreamerSizePerBatch,
+                U.capacity(bufStreamerSizePerBatch), 1);
 
             for (DataStreamerEntry e : streamingDataPerBatch)
                 keys.add(new KeyCacheObjectWrapper(e.getKey()));
@@ -1235,7 +1234,13 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         enterBusy();
 
         try {
+            if (streamingDataPerBatch.size() > 0)
+                loadBatch();
+
             doFlush();
+
+            if (streamingDataPerBatch.size() > 0)
+                clearBuf();
         }
         catch (IgniteCheckedException e) {
             throw CU.convertToCacheException(e);
@@ -1276,6 +1281,9 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
      */
     @Override public void close(boolean cancel) throws CacheException {
         try {
+            if(streamingPerBatch)
+                loadBatch();
+
             tryFlush();
 
             closeEx(cancel);
@@ -1365,12 +1373,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     /** {@inheritDoc} */
     @Override public void close() throws CacheException {
-        if(streamingPerBatch) {
-            loadBatch();
-
-            tryFlush();
-        }
-
         close(false);
     }
 
