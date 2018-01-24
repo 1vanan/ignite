@@ -36,7 +36,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     private List<IgniteFuture> futures = new ArrayList<>();
 
     /** Data amount. */
-    private int DATA_AMOUNT = 3000;
+    private int DATA_AMOUNT = 1000;
 
     /** Buffer size. */
     private final int VALUES_PER_BATCH = 777;
@@ -50,6 +50,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** Ignite data streamer. */
     private static DataStreamerImpl<Integer, Integer> dataLdr;
 
+
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
         super.beforeTestsStarted();
@@ -58,11 +59,13 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
 
         Ignite srv2 = startGrid("server2");
 
-        Ignite client = startGrid("client");
+        Ignite  client = startGrid("client");
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
-        dataLdr.setBufStreamerSizePerBatch(VALUES_PER_BATCH);
+        dataLdr.perBatchBufferSize(VALUES_PER_BATCH);
+
+        dataLdr.perNodeBufferSize(1);
     }
 
     /** {@inheritDoc} */
@@ -102,7 +105,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /**
      * Check that IgniteFuture will be returned per batch.
      */
-    public void testSimilarFuturePerBatch() {
+    public void testSimilarFuturePerBatch() throws Exception {
         for (int i = 1; i <= DATA_AMOUNT; i++) {
             futures.add(dataLdr.addData(i, i));
 
@@ -111,7 +114,6 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
                     assertFalse(futures.get(futures.size() - 1).equals(futures.get(futures.size() - 2)));
                 else
                     assertTrue(futures.get(futures.size() - 1).equals(futures.get(futures.size() - 2)));
-
             }
         }
     }
@@ -119,7 +121,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /**
      * Check that all IgniteFutures that should be streamed are done.
      */
-    public void testAllFuturesAreDone() {
+    public void testAllFuturesAreDone() throws Exception {
         for (int i = 1; i <= DATA_AMOUNT; i++)
             futures.add(dataLdr.addData(i, i));
 
@@ -142,5 +144,26 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
             uniqFut.add(dataLdr.addData(i, i));
 
         assertTrue(uniqFut.size() == batchAmount);
+    }
+
+    /**
+     *
+     */
+    public void testLoadingTimeout() throws Exception {
+        boolean closePerTimeout = false;
+
+        dataLdr.batchTimeout(10);
+
+        IgniteFuture fut = dataLdr.addData(1, 1);
+
+        while (true) {
+            if (fut.isDone()) {
+                closePerTimeout = true;
+
+                break;
+            }
+        }
+
+        assertTrue(closePerTimeout);
     }
 }

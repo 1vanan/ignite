@@ -62,7 +62,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
-//        dataLdr.setBufStreamerSizePerBatch(BATCH_SIZE);
+//        dataLdr.setBufSizePerBatch(BATCH_SIZE);
     }
 
     /** {@inheritDoc} */
@@ -101,7 +101,7 @@ public class DataStreamerAddDataTest extends GridCommonAbstractTest {
      */
     public void testAddDataKeyValue() throws Exception {
         List<IgniteFuture> list = new ArrayList<>();
-//        dataLdr.setBufStreamerSizePerBatch(BATCH_SIZE);
+//        dataLdr.setBufSizePerBatch(BATCH_SIZE);
         for (int i = 1; i <= 1; i++) {
             System.out.println(i);
             list.add(dataLdr.addData(i, i));

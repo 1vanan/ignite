@@ -122,6 +122,9 @@ public interface IgniteDataStreamer<K, V> extends AutoCloseable {
     /** Default timeout for streamer's operations. */
     public static final long DFLT_UNLIMIT_TIMEOUT = -1;
 
+    /** Default timeout for streaming per batch in milliseconds. */
+    public static final long DFLT_BATCH_TIMEOUT = -1;
+
     /**
      * Name of cache to stream data to.
      *
@@ -225,6 +228,20 @@ public interface IgniteDataStreamer<K, V> extends AutoCloseable {
     public void perNodeParallelOperations(int parallelOps);
 
     /**
+     * Allows to stream data per batch rather than per key/value in {@link #addData(Object, Object)} call.
+     *
+     * @param size Size of buffer collection.
+     */
+    public void perBatchBufferSize(int size);
+
+    /**
+     * Gets buffer size set by {@link #perBatchBufferSize(int)}.
+     *
+     * @return Buffer size or 1 in case of streaming not per batch..
+     */
+    public int perBatchBufferSize();
+
+    /**
      * Sets the timeout that is used in the following cases:
      * <ul>
      * <li>any data addition method can be blocked when all per node parallel operations are exhausted.
@@ -246,6 +263,27 @@ public interface IgniteDataStreamer<K, V> extends AutoCloseable {
      * @return Timeout in milliseconds.
      */
     public long timeout();
+
+    /**
+     * Sets the timeout that is used in case of adding data per batch.
+     * The timeout defines the max time you will wait for loading data from buffer if it's not
+     * full completely. Finally loading and flushing data will be in {@link #close(boolean)} call.
+     * <p>
+     * If it's necessary to stream data per batch rather than per key/value, {@link #perBatchBufferSize(int)}
+     * should be calling.
+     * <p>
+     * By default timeout is !!! milliseconds.
+     *
+     * @param timeout Timeout.
+     */
+    public void batchTimeout(long timeout);
+
+    /**
+     * Gets timeout set by {@link #batchTimeout(long)}.
+     *
+     * @return Timeout in milliseconds.
+     */
+    public long batchTimeout();
 
     /**
      * Gets automatic flush frequency. Essentially, this is the time after which the
