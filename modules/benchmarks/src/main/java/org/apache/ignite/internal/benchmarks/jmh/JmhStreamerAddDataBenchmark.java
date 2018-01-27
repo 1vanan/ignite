@@ -143,13 +143,13 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         dataLdr.flush();
     }
 
-//    /**
-//     * Perfomance of addData per collection.
-//     */
-//    @Benchmark
-//    public void addDataCollection() {
-//        dataLdr.addData(testList);
-//    }
+    /**
+     * Perfomance of addData per collection.
+     */
+    @Benchmark
+    public void addDataCollection() {
+        dataLdr.addData(testList);
+    }
 
     /**
      * Perfomance of addData per key value.

@@ -17,9 +17,11 @@
 
 package org.apache.ignite.internal.processors.datastreamer;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -44,22 +46,18 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** Config. */
     private IgniteConfiguration cfg;
 
-    /** String logger. */
-    private GridStringLogger strLog = new GridStringLogger();
-
     /** Ignite data streamer. */
     private static DataStreamerImpl<Integer, Integer> dataLdr;
-
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
         super.beforeTestsStarted();
 
-        Ignite srv1 = startGrid("server1");
+        startGrid("server1");
 
-        Ignite srv2 = startGrid("server2");
+        startGrid("server2");
 
-        Ignite  client = startGrid("client");
+        Ignite client = startGrid("client");
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
@@ -96,8 +94,6 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
             cfg.setClientMode(true);
 
         cfg.setCacheConfiguration(ccfg);
-
-        cfg.setGridLogger(strLog);
 
         return cfg;
     }
@@ -150,20 +146,21 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
      *
      */
     public void testLoadingTimeout() throws Exception {
-        boolean closePerTimeout = false;
+        Field timeField = dataLdr.getClass().getDeclaredField("lastLoadTime");
+
+        timeField.setAccessible(true);
+
+        long loadTimeBefore = Long.valueOf(timeField.get(dataLdr).toString());
 
         dataLdr.batchTimeout(10);
 
-        IgniteFuture fut = dataLdr.addData(1, 1);
+        dataLdr.addData(1, 1);
 
-        while (true) {
-            if (fut.isDone()) {
-                closePerTimeout = true;
+        TimeUnit.MILLISECONDS.sleep(100);
 
-                break;
-            }
-        }
+        long loadTimeAfter = Long.valueOf(timeField.get(dataLdr).toString());
 
-        assertTrue(closePerTimeout);
+        assertTrue(loadTimeBefore != loadTimeAfter);
     }
+
 }

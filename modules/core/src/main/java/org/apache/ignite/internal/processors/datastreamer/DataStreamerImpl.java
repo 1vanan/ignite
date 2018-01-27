@@ -129,10 +129,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     private int bufStreamerSizePerBatch = 1;
 
     /** Streaming entries per batch. */
-    private List<DataStreamerEntry> streamingDataPerBatch = new ArrayList<>();
+    private List<DataStreamerEntry> streamingDataPerBatch =
+        Collections.synchronizedList(new ArrayList<DataStreamerEntry>());
 
     /** Futures using in streaming data per batch. */
-    private List<IgniteBiTuple<IgniteCacheFutureImpl, GridFutureAdapter<Object>>> futuresPerBatch = new ArrayList<>();
+    private List<IgniteBiTuple<IgniteCacheFutureImpl, GridFutureAdapter<Object>>> futuresPerBatch =
+        Collections.synchronizedList(new ArrayList<IgniteBiTuple<IgniteCacheFutureImpl, GridFutureAdapter<Object>>>());
 
     /** True if data streams per batch rather than per key/value. */
     private boolean streamingPerBatch = false;
@@ -768,22 +770,27 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     /**
      * Load batch of DataStreamerEntry from buffer streamingDataPerBatch.
      */
-    private void loadBatch(){
-        Collection<KeyCacheObjectWrapper> keys = null;
-        if(streamingDataPerBatch.size() > 1) {
-            keys = new GridConcurrentHashSet<>(bufStreamerSizePerBatch,
-                U.capacity(bufStreamerSizePerBatch), 1);
+    private void loadBatch() {
+        synchronized (streamingDataPerBatch) {
+            synchronized (futuresPerBatch) {
+                Collection<KeyCacheObjectWrapper> keys = null;
 
-            for (DataStreamerEntry e : streamingDataPerBatch)
-                keys.add(new KeyCacheObjectWrapper(e.getKey()));
+                if (streamingDataPerBatch.size() > 1) {
+                    keys = new GridConcurrentHashSet<>(bufStreamerSizePerBatch,
+                        U.capacity(bufStreamerSizePerBatch), 1);
 
-    }
+                    for (DataStreamerEntry e : streamingDataPerBatch)
+                        keys.add(new KeyCacheObjectWrapper(e.getKey()));
 
-        load0(streamingDataPerBatch, futuresPerBatch.get(futuresPerBatch.size() - 1).get2(), keys, 0);
+                }
 
-        lastLoadTime = U.currentTimeMillis();
+                load0(streamingDataPerBatch, futuresPerBatch.get(futuresPerBatch.size() - 1).get2(), keys, 0);
 
-        refreshBatchBuffers(new GridFutureAdapter<>());
+                lastLoadTime = U.currentTimeMillis();
+
+                refreshBatchBuffers(new GridFutureAdapter<>());
+            }
+        }
     }
 
     /** {@inheritDoc} */
