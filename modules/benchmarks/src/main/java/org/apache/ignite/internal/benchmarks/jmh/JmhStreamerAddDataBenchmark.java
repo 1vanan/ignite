@@ -28,7 +28,6 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -42,16 +41,16 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
-    /** Default cache name.*/
+    /** Default cache name. */
     private static final String DEFAULT_CACHE_NAME = "default";
 
-    /** Data loader.*/
+    /** Data loader. */
     private DataStreamerImpl<Integer, Integer> dataLdr;
 
-    /** Test list.*/
+    /** Test list. */
     private static Collection<AbstractMap.SimpleEntry<Integer, Integer>> testList = new ArrayList<>();
 
-    /** Data amount.*/
+    /** Data amount. */
     private static final int DATA_AMOUNT = 1000;
 
     /** Batch size. */
@@ -62,7 +61,6 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
 
     /** Server 2. */
     private Ignite srv2;
-
 
     /**
      * Create Ignite configuration.
@@ -92,13 +90,12 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     }
 
     @State(Scope.Benchmark)
-    public static class StreamingMap{
+    public static class StreamingMap {
         static Map<Integer, Integer> intMap = new HashMap<>();
     }
 
-
     /**
-     * Start 3 servers and 1 client.
+     * Start 2 server nodes and 1 client node.
      */
     @Setup(Level.Trial)
     public void setup() {
@@ -108,16 +105,16 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
 
         prepareStreamingCollection();
 
-        dataLdr = (DataStreamerImpl) client.dataStreamer(DEFAULT_CACHE_NAME);
+        dataLdr = (DataStreamerImpl)client.dataStreamer(DEFAULT_CACHE_NAME);
 
         dataLdr.perBatchBufferSize(BATCH_SIZE);
 
-        for(int i = 0; i < DATA_AMOUNT; i++)
+        for (int i = 0; i < DATA_AMOUNT; i++)
             StreamingMap.intMap.put(i, i);
     }
 
     /**
-     *Fill streaming collection.
+     * Fill streaming collection.
      */
     private static void prepareStreamingCollection() {
         for (int i = 0; i < DATA_AMOUNT; i++)
@@ -128,7 +125,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
      * Stop all grids after all tests.
      */
     @TearDown(Level.Trial)
-    public void tearDown(){
+    public void tearDown() {
         Ignition.stopAll(true);
     }
 
@@ -136,7 +133,7 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
      * Clean caches and loader after each operation.
      */
     @TearDown(Level.Iteration)
-    public void clean(){
+    public void clean() {
         srv1.cache(DEFAULT_CACHE_NAME).clear();
         srv2.cache(DEFAULT_CACHE_NAME).clear();
 
@@ -163,8 +160,6 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
             dataLdr.addData(entry.getKey(), entry.getValue());
     }
 
-
-
     /**
      * Launch benchmark.
      *
@@ -172,12 +167,12 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
      */
     public static void main(String[] args) throws RunnerException {
         ChainedOptionsBuilder builder = new OptionsBuilder()
-                .measurementIterations(20)
-                .operationsPerInvocation(3)
-                .warmupIterations(7)
-                .forks(1)
-                .threads(1)
-                .include(JmhStreamerAddDataBenchmark.class.getSimpleName());
+            .measurementIterations(20)
+            .operationsPerInvocation(3)
+            .warmupIterations(7)
+            .forks(1)
+            .threads(1)
+            .include(JmhStreamerAddDataBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();
     }

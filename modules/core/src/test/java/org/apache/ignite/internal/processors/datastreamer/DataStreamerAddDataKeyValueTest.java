@@ -27,7 +27,6 @@ import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.lang.IgniteFuture;
-import org.apache.ignite.testframework.GridStringLogger;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
 /**
@@ -47,7 +46,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     private IgniteConfiguration cfg;
 
     /** Ignite data streamer. */
-    private static DataStreamerImpl<Integer, Integer> dataLdr;
+    private static DataStreamerImpl dataLdr;
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
@@ -162,5 +161,4 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
 
         assertTrue(loadTimeBefore != loadTimeAfter);
     }
-
 }
