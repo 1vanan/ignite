@@ -125,7 +125,7 @@ import static org.apache.ignite.internal.GridTopic.TOPIC_DATASTREAM;
 @SuppressWarnings("unchecked")
 public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed {
     /** Buffer size for streaming per batch. */
-    private int bufStreamerSizePerBatch = 1;
+    private int bufStreamerSizePerBatch = DFLT_BATCH_BUFFER_SIZE;
 
     /** Streaming entries per batch. */
     private List<DataStreamerEntry> streamingDataPerBatch =
