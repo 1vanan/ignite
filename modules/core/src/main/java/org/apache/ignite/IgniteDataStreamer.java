@@ -121,7 +121,7 @@ public interface IgniteDataStreamer<K, V> extends AutoCloseable {
 
     /** Default batch size to sent to remote node for loading: as default data is streaming per key/value
      * rather than ber batch. */
-    public static final int DFLT_BATCH_BUFFER_SIZE = 1;
+    public static final int DFLT_LOADER_SIZE = 1;
 
     /** Default timeout for streamer's operations. */
     public static final long DFLT_UNLIMIT_TIMEOUT = -1;
