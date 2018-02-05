@@ -53,9 +53,6 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
     /** Data amount. */
     private static final int DATA_AMOUNT = 1000;
 
-    /** Batch size. */
-    private static final int BATCH_SIZE = 1000;
-
     /** Client. */
     private Ignite srv1;
 
@@ -106,8 +103,6 @@ public class JmhStreamerAddDataBenchmark extends JmhAbstractBenchmark {
         prepareStreamingCollection();
 
         dataLdr = (DataStreamerImpl)client.dataStreamer(DEFAULT_CACHE_NAME);
-
-        dataLdr.perBatchBufferSize(BATCH_SIZE);
 
         for (int i = 0; i < DATA_AMOUNT; i++)
             StreamingMap.intMap.put(i, i);

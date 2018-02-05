@@ -238,13 +238,11 @@ public class DataStreamerImplSelfTest extends GridCommonAbstractTest {
             IgniteFuture fut = null;
 
             try (IgniteDataStreamer<Integer, String> streamer = ignite.dataStreamer(DEFAULT_CACHE_NAME)) {
-                streamer.perBatchBufferSize(1);
-
                 fut = streamer.addData(1, "1");
 
                 streamer.flush();
             }
-            catch (IllegalStateException ignored) {
+            catch (CacheException ignored) {
                 try {
                     fut.get();
 
@@ -440,8 +438,6 @@ public class DataStreamerImplSelfTest extends GridCommonAbstractTest {
         ignite.getOrCreateCache(DEFAULT_CACHE_NAME);
 
         IgniteDataStreamer<Object, Object> streamer = ignite.dataStreamer(DEFAULT_CACHE_NAME);
-
-        streamer.perBatchBufferSize(1);
 
         ((DataStreamerImpl)streamer).maxRemapCount(3);
 

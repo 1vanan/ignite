@@ -219,8 +219,6 @@ public class DataStreamProcessorSelfTest extends GridCommonAbstractTest {
 
             final IgniteDataStreamer<Integer, Integer> ldr = igniteWithoutCache.dataStreamer(DEFAULT_CACHE_NAME);
 
-            ldr.perBatchBufferSize(1);
-
             ldr.receiver(DataStreamerCacheUpdaters.<Integer, Integer>batchedSorted());
 
             final AtomicInteger idxGen = new AtomicInteger();
@@ -262,8 +260,6 @@ public class DataStreamProcessorSelfTest extends GridCommonAbstractTest {
             assertEquals(total, s2 + s3);
 
             final IgniteDataStreamer<Integer, Integer> rmvLdr = igniteWithCache.dataStreamer(DEFAULT_CACHE_NAME);
-
-            rmvLdr.perBatchBufferSize(1);
 
             rmvLdr.receiver(DataStreamerCacheUpdaters.<Integer, Integer>batchedSorted());
 
@@ -344,8 +340,6 @@ public class DataStreamProcessorSelfTest extends GridCommonAbstractTest {
             final int threads = 10;
 
             try (final IgniteDataStreamer<Integer, Integer> ldr = g1.dataStreamer(DEFAULT_CACHE_NAME)) {
-                ldr.perBatchBufferSize(1);
-
                 final AtomicInteger idxGen = new AtomicInteger();
 
                 IgniteInternalFuture<?> f1 = multithreadedAsync(new Callable<Object>() {
@@ -410,8 +404,6 @@ public class DataStreamProcessorSelfTest extends GridCommonAbstractTest {
 
             IgniteDataStreamer<Object, Object> dataLdr = g1.dataStreamer(DEFAULT_CACHE_NAME);
 
-            dataLdr.perBatchBufferSize(1);
-
             for (int i = 0, size = arrays.size(); i < 1000; i++) {
                 Object arr = arrays.get(i % size);
 
@@ -471,8 +463,6 @@ public class DataStreamProcessorSelfTest extends GridCommonAbstractTest {
 
             // Get and configure loader.
             final IgniteDataStreamer<Integer, Integer> ldr = g1.dataStreamer(DEFAULT_CACHE_NAME);
-
-            ldr.perBatchBufferSize(1);
 
             ldr.receiver(DataStreamerCacheUpdaters.<Integer, Integer>individual());
             ldr.perNodeBufferSize(2);

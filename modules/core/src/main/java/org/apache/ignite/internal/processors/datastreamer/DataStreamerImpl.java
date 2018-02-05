@@ -692,7 +692,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             keys = new GridConcurrentHashSet<>(entries.size(),
                     U.capacity(entries.size()), 1);
 
-            for (DataStreamerEntry e : loadingDataPerBatch)
+            for (DataStreamerEntry e : entries)
                 keys.add(new KeyCacheObjectWrapper(e.getKey()));
 
         }
@@ -705,7 +705,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         if (entries.size() > 0) {
             lastLoadTime = U.currentTimeMillis();
 
-            loadingDataPerBatch.clear();
+            entries.clear();
 
             futurePerBatch = new IgniteCacheFutureImpl<>(new GridFutureAdapter<>());
         }
