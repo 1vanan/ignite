@@ -169,9 +169,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     /** */
     private long timeout = DFLT_UNLIMIT_TIMEOUT;
 
-    /** Batch timeout. */
-    private long batchTimeout = DFLT_BATCH_TIMEOUT;
-
     /** Last load per batch time. */
     public long lastLoadTime = U.currentTimeMillis();
 
@@ -553,16 +550,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     }
 
     /** {@inheritDoc} */
-    @Override public void batchTimeout(long timeout) {
-        this.batchTimeout = timeout;
-    }
-
-    /** {@inheritDoc} */
-    @Override public long batchTimeout() {
-        return batchTimeout;
-    }
-
-    /** {@inheritDoc} */
     @Override public long autoFlushFrequency() {
         return autoFlushFreq;
     }
@@ -651,7 +638,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     /**
      * Clear buffer collections in case of streaming data per batch.
      */
-    private void clearBuf(){
+    private void clearBuf() {
         loadingDataPerBatch.clear();
 
         futurePerBatch = new IgniteCacheFutureImpl(new GridFutureAdapter());
@@ -664,23 +651,21 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     public IgniteFuture<?> addDataInternal(Collection<? extends DataStreamerEntry> entries) {
         enterBusy();
 
-        DataStreamerEntry streamingEntry = entries.iterator().next();
-
         try {
-            loadingDataPerBatch.add(streamingEntry);
+            synchronized (loadingDataPerBatch) {
+                loadingDataPerBatch.addAll(entries);
 
-            if (loadingDataPerBatch.size() == 1) {
-                futurePerBatch.internalFuture().listen(rmvActiveFut);
+                if (loadingDataPerBatch.size() == 1) {
+                    futurePerBatch.internalFuture().listen(rmvActiveFut);
 
-                activeFuts.add(futurePerBatch.internalFuture());
+                    activeFuts.add(futurePerBatch.internalFuture());
+                }
+
+                if (loadingDataPerBatch.size() == bufLoaderSizePerBatch)
+                    return loadData(loadingDataPerBatch);
+
+                return futurePerBatch;
             }
-            if (batchTimeout > 0)
-                ctx.timeout().schedule(streamBatchPerTimeout, batchTimeout, -1);
-
-            if (loadingDataPerBatch.size() == bufLoaderSizePerBatch)
-                return loadData(loadingDataPerBatch);
-
-            return futurePerBatch;
         }
         catch (Throwable e) {
                 GridFutureAdapter internalFut = (GridFutureAdapter)futurePerBatch.internalFuture();
@@ -697,22 +682,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         }
     }
 
-    /** Load and flush batch per timeout. */
-    private Runnable streamBatchPerTimeout = () -> {
-        enterBusy();
-        try {
-            if (!loadingDataPerBatch.isEmpty() && loadingDataPerBatch.size() != bufLoaderSizePerBatch
-                && U.currentTimeMillis() - lastLoadTime > batchTimeout) {
-                loadData(loadingDataPerBatch);
-
-                tryFlush();
-            }
-        }
-        finally {
-            leaveBusy();
-        }
-    };
-
     /**
      * Load batch of DataStreamerEntry from buffer loadingDataPerBatch.
      */
@@ -721,14 +690,15 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
         if (entries.size() > 1) {
             keys = new GridConcurrentHashSet<>(entries.size(),
-                U.capacity(entries.size()), 1);
+                    U.capacity(entries.size()), 1);
 
             for (DataStreamerEntry e : loadingDataPerBatch)
                 keys.add(new KeyCacheObjectWrapper(e.getKey()));
 
         }
 
-        load0(entries, (GridFutureAdapter)futurePerBatch.internalFuture(), keys, 0);
+        if (entries.size() > 0)
+            load0(entries, (GridFutureAdapter) futurePerBatch.internalFuture(), keys, 0);
 
         IgniteCacheFutureImpl<Object> returnableFut = futurePerBatch;
 
@@ -1236,13 +1206,14 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         enterBusy();
 
         try {
-            if (loadingDataPerBatch.size() > 0)
-                loadData(loadingDataPerBatch);
+            synchronized (loadingDataPerBatch) {
+                if (loadingDataPerBatch.size() > 0) {
+                    loadData(loadingDataPerBatch);
 
+                    clearBuf();
+                }
+            }
             doFlush();
-
-            if (loadingDataPerBatch.size() > 0)
-                clearBuf();
         }
         catch (IgniteCheckedException e) {
             throw CU.convertToCacheException(e);
@@ -1264,6 +1235,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             return;
 
         try {
+            synchronized (loadingDataPerBatch) {
+                if (!loadingDataPerBatch.isEmpty() && loadingDataPerBatch.size() != bufLoaderSizePerBatch
+                        && U.currentTimeMillis() - lastLoadTime > timeout)
+                    loadData(loadingDataPerBatch);
+            }
+
             for (Buffer buf : bufMappings.values())
                 buf.flush();
 
@@ -1284,7 +1261,9 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     @Override public void close(boolean cancel) throws CacheException {
         try {
             if(bufLoaderSizePerBatch > 1) {
-                loadData(loadingDataPerBatch);
+                synchronized (loadingDataPerBatch) {
+                    loadData(loadingDataPerBatch);
+                }
 
                 doFlush();
             }

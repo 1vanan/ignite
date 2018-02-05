@@ -37,10 +37,10 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     private List<IgniteFuture> futures = new ArrayList<>();
 
     /** Data amount. */
-    private int DATA_AMOUNT = 1000;
+    private final static int DATA_AMOUNT = 1000;
 
     /** Buffer size. */
-    private final int VALUES_PER_BATCH = 777;
+    private final static int VALUES_PER_BATCH = 777;
 
     /** Config. */
     private IgniteConfiguration cfg;
@@ -61,8 +61,6 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
         dataLdr.perBatchBufferSize(VALUES_PER_BATCH);
-
-        dataLdr.perNodeBufferSize(1);
     }
 
     /** {@inheritDoc} */
@@ -133,7 +131,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     public void testFuturesAmount() {
         HashSet uniqFut = new HashSet();
 
-        double batchAmount = Math.ceil((double)DATA_AMOUNT / VALUES_PER_BATCH);
+        final double batchAmount = Math.ceil((double)DATA_AMOUNT / VALUES_PER_BATCH);
 
         for (int i = 1; i <= DATA_AMOUNT; i++)
             uniqFut.add(dataLdr.addData(i, i));
@@ -151,7 +149,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
 
         long loadTimeBefore = Long.valueOf(timeField.get(dataLdr).toString());
 
-        dataLdr.batchTimeout(10);
+        dataLdr.autoFlushFrequency(10);
 
         dataLdr.addData(1, 1);
 
