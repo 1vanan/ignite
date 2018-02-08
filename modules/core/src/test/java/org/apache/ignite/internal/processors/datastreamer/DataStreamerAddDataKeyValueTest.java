@@ -48,10 +48,7 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
     /** Ignite data streamer. */
     private static DataStreamerImpl dataLdr;
 
-    /** {@inheritDoc} */
-    @Override protected void beforeTestsStarted() throws Exception {
-        super.beforeTestsStarted();
-
+    @Override protected void beforeTest() throws Exception {
         startGrid("server1");
 
         startGrid("server2");
@@ -61,20 +58,17 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         dataLdr = (DataStreamerImpl)client.dataStreamer(cfg.getCacheConfiguration()[0].getName());
 
         dataLdr.perBatchBufferSize(VALUES_PER_BATCH);
-    }
 
-    /** {@inheritDoc} */
-    @Override protected void afterTestsStopped() throws Exception {
-        super.afterTestsStopped();
-
-        stopAllGrids();
+        super.beforeTest();
     }
 
     /** {@inheritDoc} */
     @Override protected void afterTest() throws Exception {
         futures.clear();
 
-        dataLdr.flush();
+        dataLdr.close();
+
+        stopAllGrids();
 
         super.afterTest();
     }
@@ -137,26 +131,5 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
             uniqFut.add(dataLdr.addData(i, i));
 
         assertTrue(uniqFut.size() == batchAmount);
-    }
-
-    /**
-     *
-     */
-    public void testLoadingTimeout() throws Exception {
-        Field timeField = dataLdr.getClass().getDeclaredField("lastLoadTime");
-
-        timeField.setAccessible(true);
-
-        long loadTimeBefore = Long.valueOf(timeField.get(dataLdr).toString());
-
-        dataLdr.autoFlushFrequency(10);
-
-        dataLdr.addData(1, 1);
-
-        TimeUnit.MILLISECONDS.sleep(100);
-
-        long loadTimeAfter = Long.valueOf(timeField.get(dataLdr).toString());
-
-        assertTrue(loadTimeBefore != loadTimeAfter);
     }
 }
