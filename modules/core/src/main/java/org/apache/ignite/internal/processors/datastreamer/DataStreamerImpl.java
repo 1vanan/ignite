@@ -127,7 +127,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     private int bufLdrSizePerBatch = DFLT_LOADER_SIZE;
 
     /** Streaming entries per batch. */
-    private final List<DataStreamerEntry> LOADING_DATA_PER_BATCH = new ArrayList<>();
+    private final List<DataStreamerEntry> loadingDataPerBatch = new ArrayList<>();
 
     /** Future using in streaming data per batch. */
     private volatile IgniteCacheFutureImpl futPerBatch =new IgniteCacheFutureImpl(new GridFutureAdapter());
@@ -379,12 +379,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     }
 
     /** {@inheritDoc} */
-    public void perBatchBufferSize(int size){
+    public void perBatchBufferSize(int size) {
         this.bufLdrSizePerBatch = size;
     }
 
     /** {@inheritDoc} */
-    public int perBatchBufferSize(){
+    public int perBatchBufferSize() {
         return this.bufLdrSizePerBatch;
     }
 
@@ -636,7 +636,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
      * Clear buffer collections in case of streaming data per batch.
      */
     private void clearBuf() {
-        LOADING_DATA_PER_BATCH.clear();
+        loadingDataPerBatch.clear();
 
         futPerBatch = new IgniteCacheFutureImpl(new GridFutureAdapter());
     }
@@ -653,17 +653,17 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         IgniteCacheFutureImpl fut0 = null;
 
         try {
-            synchronized (LOADING_DATA_PER_BATCH) {
-                LOADING_DATA_PER_BATCH.addAll(entries);
+            synchronized (loadingDataPerBatch) {
+                loadingDataPerBatch.addAll(entries);
 
-                if (LOADING_DATA_PER_BATCH.size() == 1 && !activeFuts.contains(futPerBatch.internalFuture())) {
+                if (loadingDataPerBatch.size() == 1 && !activeFuts.contains(futPerBatch.internalFuture())) {
                     futPerBatch.internalFuture().listen(rmvActiveFut);
 
                     activeFuts.add(futPerBatch.internalFuture());
                 }
 
-                if (LOADING_DATA_PER_BATCH.size() == bufLdrSizePerBatch) {
-                    entries0 = new ArrayList<>(LOADING_DATA_PER_BATCH);
+                if (loadingDataPerBatch.size() == bufLdrSizePerBatch) {
+                    entries0 = new ArrayList<>(loadingDataPerBatch);
 
                     fut0 = futPerBatch;
 
@@ -1210,12 +1210,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         IgniteCacheFutureImpl fut0 = null;
 
         try {
-            if (LOADING_DATA_PER_BATCH.size() > 0) {
-                synchronized (LOADING_DATA_PER_BATCH) {
-                    if (LOADING_DATA_PER_BATCH.size() > 0) {
+            if (loadingDataPerBatch.size() > 0) {
+                synchronized (loadingDataPerBatch) {
+                    if (loadingDataPerBatch.size() > 0) {
                         fut0 = futPerBatch;
 
-                        entries0 = new ArrayList<>(LOADING_DATA_PER_BATCH);
+                        entries0 = new ArrayList<>(loadingDataPerBatch);
 
                         clearBuf();
                     }
@@ -1251,10 +1251,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         IgniteCacheFutureImpl fut0 = null;
 
         try {
-            if (LOADING_DATA_PER_BATCH.size() > 0)
-                synchronized (LOADING_DATA_PER_BATCH) {
-                    if (LOADING_DATA_PER_BATCH.size() > 0) {
-                        entries0 = new ArrayList<>(LOADING_DATA_PER_BATCH);
+            if (loadingDataPerBatch.size() > 0)
+                synchronized (loadingDataPerBatch) {
+                    if (loadingDataPerBatch.size() > 0) {
+                        entries0 = new ArrayList<>(loadingDataPerBatch);
 
                         fut0 = futPerBatch;
 
@@ -1288,10 +1288,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         IgniteCacheFutureImpl fut0 = null;
 
         try {
-            if (LOADING_DATA_PER_BATCH.size() > 0) {
-                synchronized (LOADING_DATA_PER_BATCH) {
-                    if (LOADING_DATA_PER_BATCH.size() > 0) {
-                        entries0 = new ArrayList<>(LOADING_DATA_PER_BATCH);
+            if (loadingDataPerBatch.size() > 0) {
+                synchronized (loadingDataPerBatch) {
+                    if (loadingDataPerBatch.size() > 0) {
+                        entries0 = new ArrayList<>(loadingDataPerBatch);
 
                         fut0 = futPerBatch;
 
