@@ -690,7 +690,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     }
 
     /**
-     * Load batch of DataStreamerEntry from buffer LOADINGDATAPERBATCH.
+     * Load batch of DataStreamerEntry from buffer loadingDataPerBatch.
      */
     private IgniteCacheFutureImpl loadData(Collection<? extends DataStreamerEntry> entries, IgniteCacheFutureImpl future) {
         Collection<KeyCacheObjectWrapper> keys = null;
