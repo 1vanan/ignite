@@ -160,7 +160,7 @@ public class DataStreamProcessorSelfTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testPartitioned() throws Exception {
-//        mode = PARTITIONED;
+        mode = PARTITIONED;
 
         checkDataStreamer();
     }
