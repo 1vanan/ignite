@@ -21,12 +21,16 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.lang.IgniteFuture;
+import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
 /**
@@ -60,6 +64,19 @@ public class DataStreamerAddDataKeyValueTest extends GridCommonAbstractTest {
         dataLdr.perBatchBufferSize(VALUES_PER_BATCH);
 
         super.beforeTest();
+    }
+
+    public void testTest() throws IgniteCheckedException {
+        IgniteInternalFuture<?> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {
+            @Override public Object call() throws Exception {
+                for (int i = 1; i < 100; ++i)
+                    dataLdr.addData(i, i);
+                System.out.println("~~!end");
+                return true;
+            }
+        }, 10, "start-node-thread");
+
+        fut.get();
     }
 
     /** {@inheritDoc} */
