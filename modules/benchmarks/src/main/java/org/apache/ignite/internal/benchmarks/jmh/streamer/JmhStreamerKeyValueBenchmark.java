@@ -124,7 +124,7 @@ public class JmhStreamerKeyValueBenchmark extends JmhStreamerAbstractBenchmark {
                 .operationsPerInvocation(3)
                 .warmupIterations(7)
                 .forks(1)
-                .threads(1)
+                .threads(2)
                 .include(JmhStreamerKeyValueBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();

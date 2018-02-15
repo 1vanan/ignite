@@ -68,7 +68,7 @@ class JmhStreamerAbstractBenchmark {
         if (isClient) {
             cfg.setClientMode(true);
 
-            cfg.setCacheConfiguration(defaultCacheConfiguration(0));
+            cfg.setCacheConfiguration(defaultCacheConfiguration("client"));
         } else
             cfg.setCacheConfiguration(defaultCacheConfiguration());
 
@@ -78,10 +78,10 @@ class JmhStreamerAbstractBenchmark {
     /**
      * @return New cache configuration with modified defaults for client node.
      */
-    private static CacheConfiguration defaultCacheConfiguration(int cacheNum) {
+    private static CacheConfiguration defaultCacheConfiguration(String name) {
         CacheConfiguration cfg;
 
-        cfg = new CacheConfiguration(DEFAULT_CACHE_NAME + cacheNum);
+        cfg = new CacheConfiguration(DEFAULT_CACHE_NAME + name);
 
         cfg.setAtomicityMode(TRANSACTIONAL);
 
