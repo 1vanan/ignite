@@ -130,10 +130,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             new ConcurrentHashMap8<>();
 
     /** Closed streamer. */
-    boolean closedStreamer = false;
+    private boolean closedStreamer = false;
 
     /** Streamer lock. */
-    ReadWriteLock streamerLock = new ReentrantReadWriteLock();
+    private ReadWriteLock streamerLock = new ReentrantReadWriteLock();
 
     /** Isolated receiver. */
     private static final StreamReceiver ISOLATED_UPDATER = new IsolatedUpdater();
@@ -638,10 +638,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
     /**
      * Clear buffer collections in case of streaming data per batch.
      */
-    private void clearBuf() {
-        threadBufMap.get(Thread.currentThread().getId()).get2().clear();
+    private void clearBuf(long threadId) {
+        threadBufMap.get(threadId).get2().clear();
 
-        threadBufMap.get(Thread.currentThread().getId()).set1(new IgniteCacheFutureImpl(new GridFutureAdapter()));
+        threadBufMap.get(threadId).set1(new IgniteCacheFutureImpl(new GridFutureAdapter()));
     }
 
     /**
@@ -724,7 +724,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             if (entries0.size() == bufLdrSizePerBatch) {
                 loadData(entries0, fut0);
 
-                clearBuf();
+                clearBuf(Thread.currentThread().getId());
             }
 
             return fut0;
@@ -1161,10 +1161,23 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
         int doneCnt = 0;
 
+        streamerLock.writeLock().lock();
+
+        for (Long threadId :
+                threadBufMap.keySet()) {
+            if (threadBufMap.get(threadId).get2().size() > 0) {
+                loadData(threadBufMap.get(threadId).get2(), threadBufMap.get(threadId).get1());
+
+                clearBuf(threadId);
+            }
+        }
+
+        streamerLock.writeLock().unlock();
+
         for (IgniteInternalFuture<?> f : activeFuts) {
             if (!f.isDone()) {
                 if (activeFuts0 == null)
-                    activeFuts0 = new ArrayList<>((int)(activeFuts.size() * 1.2));
+                    activeFuts0 = new ArrayList<>((int) (activeFuts.size() * 1.2));
 
                 activeFuts0.add(f);
             }
@@ -1266,16 +1279,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         enterBusy();
 
         try {
-            streamerLock.writeLock().lock();
-
-            if (threadBufMap.get(Thread.currentThread().getId()).get2().size() > 0) {
-                loadData(threadBufMap.get(Thread.currentThread().getId()).get2(),
-                        threadBufMap.get(Thread.currentThread().getId()).get1());
-
-                clearBuf();
-            }
-
-            streamerLock.writeLock().unlock();
 
             doFlush();
         }
@@ -1305,6 +1308,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                     threadBufMap.keySet()) {
                 if (threadBufMap.get(threadId).get2().size() > 0)
                     loadData(threadBufMap.get(threadId).get2(), threadBufMap.get(threadId).get1());
+
+                clearBuf(threadId);
             }
 
             streamerLock.writeLock().unlock();
@@ -1332,11 +1337,13 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
             closedStreamer = true;
 
-                for (Long threadId :
-                        threadBufMap.keySet()) {
-                    if (threadBufMap.get(threadId).get2().size() > 0)
-                        loadData(threadBufMap.get(threadId).get2(), threadBufMap.get(threadId).get1());
-                }
+            for (Long threadId :
+                    threadBufMap.keySet()) {
+                if (threadBufMap.get(threadId).get2().size() > 0)
+                    loadData(threadBufMap.get(threadId).get2(), threadBufMap.get(threadId).get1());
+
+                clearBuf(threadId);
+            }
             streamerLock.writeLock().unlock();
 
             closeEx(cancel);

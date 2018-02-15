@@ -122,5 +122,4 @@ public class JmhStreamerKeyValueBenchmark extends JmhStreamerAbstractBenchmark {
 
         new Runner(builder.build()).run();
     }
-
 }
