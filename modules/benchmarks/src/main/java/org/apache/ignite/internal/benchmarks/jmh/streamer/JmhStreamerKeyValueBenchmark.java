@@ -91,11 +91,6 @@ public class JmhStreamerKeyValueBenchmark extends JmhStreamerAbstractBenchmark {
         private Map<Integer, Integer> data = new HashMap<>();
 
         /**
-         * Streamer id.
-         */
-        private int id;
-
-        /**
          * Data loader.
          */
         private IgniteDataStreamer<Integer, Integer> dataLdr;
@@ -104,12 +99,10 @@ public class JmhStreamerKeyValueBenchmark extends JmhStreamerAbstractBenchmark {
          * Default constructor. Set streamer id and fill collection with streaming data.
          */
         public KeyValueStreamer() {
-            this.id = streamerId.getAndIncrement();
-
             for (int i = 0; i < DATA_AMOUNT; i++)
                 data.put(i, i);
 
-            dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + id);
+            dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + "client");
         }
     }
 
@@ -124,7 +117,7 @@ public class JmhStreamerKeyValueBenchmark extends JmhStreamerAbstractBenchmark {
                 .operationsPerInvocation(3)
                 .warmupIterations(7)
                 .forks(1)
-                .threads(2)
+                .threads(3)
                 .include(JmhStreamerKeyValueBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();

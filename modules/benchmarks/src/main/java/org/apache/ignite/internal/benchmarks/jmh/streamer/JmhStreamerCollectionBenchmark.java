@@ -92,11 +92,6 @@ public class JmhStreamerCollectionBenchmark extends JmhStreamerAbstractBenchmark
         private Collection<AbstractMap.SimpleEntry<Integer, Integer>> streamingList = new ArrayList<>();
 
         /**
-         * Streamer id.
-         */
-        int id;
-
-        /**
          * Data loader.
          */
         IgniteDataStreamer<Integer, Integer> dataLdr;
@@ -105,12 +100,10 @@ public class JmhStreamerCollectionBenchmark extends JmhStreamerAbstractBenchmark
          * Default constructor. Set streamer id and fill streaming collection.
          */
         public CollectionStreamer() {
-            this.id = streamerId.getAndIncrement();
-
             for (int i = 0; i < DATA_AMOUNT; i++)
                 streamingList.add(new HashMap.SimpleEntry<>(i, i));
 
-            dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + id);
+            dataLdr = client.dataStreamer(DEFAULT_CACHE_NAME + "client");
         }
     }
 
@@ -125,7 +118,7 @@ public class JmhStreamerCollectionBenchmark extends JmhStreamerAbstractBenchmark
                 .operationsPerInvocation(3)
                 .warmupIterations(7)
                 .forks(1)
-                .threads(1)
+                .threads(3)
                 .include(JmhStreamerCollectionBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();

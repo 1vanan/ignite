@@ -38,11 +38,6 @@ class JmhStreamerAbstractBenchmark {
     static final String DEFAULT_CACHE_NAME = "default";
 
     /**
-     * Thread amount.
-     */
-    static final AtomicInteger streamerId = new AtomicInteger(0);
-
-    /**
      * Server 1.
      */
     Ignite srv1;
