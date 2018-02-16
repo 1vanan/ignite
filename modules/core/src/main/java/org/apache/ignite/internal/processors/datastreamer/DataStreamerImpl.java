@@ -1333,18 +1333,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
      */
     @Override public void close(boolean cancel) throws CacheException {
         try {
-            streamerLock.writeLock().lock();
-
             closedStreamer = true;
-
-            for (Long threadId :
-                    threadBufMap.keySet()) {
-                if (threadBufMap.get(threadId).get2().size() > 0)
-                    loadData(threadBufMap.get(threadId).get2(), threadBufMap.get(threadId).get1());
-
-                clearBuf(threadId);
-            }
-            streamerLock.writeLock().unlock();
 
             closeEx(cancel);
         }
