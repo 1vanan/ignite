@@ -107,7 +107,11 @@ import org.apache.ignite.internal.util.typedef.internal.GPC;
 import org.apache.ignite.internal.util.typedef.internal.LT;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
-import org.apache.ignite.lang.*;
+import org.apache.ignite.lang.IgniteClosure;
+import org.apache.ignite.lang.IgniteFuture;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.lang.IgniteBiTuple;
 import org.apache.ignite.plugin.security.SecurityPermission;
 import org.apache.ignite.stream.StreamReceiver;
 import org.jetbrains.annotations.Nullable;
@@ -637,6 +641,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     /**
      * Clear buffer collections in case of streaming data per batch.
+     *
+     * @param threadId Thread Id.
      */
     private void clearBuf(long threadId) {
         threadBufMap.get(threadId).get2().clear();
@@ -1177,7 +1183,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         for (IgniteInternalFuture<?> f : activeFuts) {
             if (!f.isDone()) {
                 if (activeFuts0 == null)
-                    activeFuts0 = new ArrayList<>((int) (activeFuts.size() * 1.2));
+                    activeFuts0 = new ArrayList<>((int)(activeFuts.size() * 1.2));
 
                 activeFuts0.add(f);
             }
@@ -1279,7 +1285,6 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         enterBusy();
 
         try {
-
             doFlush();
         }
         catch (IgniteCheckedException e) {
