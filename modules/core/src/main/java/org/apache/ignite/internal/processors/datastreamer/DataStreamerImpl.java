@@ -708,9 +708,9 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                 IgniteBiTuple<IgniteCacheFutureImpl, List<DataStreamerEntry>> futBufPair =
                         new IgniteBiTuple(futPerBatch, entriesPerBatch);
 
-                activeFuts.add(futPerBatch.internalFuture());
-
                 futPerBatch.internalFuture().listen(rmvActiveFut);
+
+                activeFuts.add(futPerBatch.internalFuture());
 
                 threadBufMap.put(threadId, futBufPair);
             }
@@ -1161,15 +1161,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         writeLock.lock();
 
         try {
-            for (Long threadId :
-                    threadBufMap.keySet()) {
+            for (Long threadId : threadBufMap.keySet()) {
                 List<DataStreamerEntry> entries0 = threadBufMap.get(threadId).get2();
 
-                if (entries0.size() > 0) {
                     loadData(entries0, threadBufMap.get(threadId).get1());
 
                     threadBufMap.remove(threadId);
-                }
             }
         } finally {
             writeLock.unlock();
@@ -1305,12 +1302,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             writeLock.lock();
 
             try {
-                for (Long threadId :
-                        threadBufMap.keySet()) {
-                    List <DataStreamerEntry> entries0 = threadBufMap.get(threadId).get2();
+                for (Long threadId : threadBufMap.keySet()) {
+                    List<DataStreamerEntry> entries0 = threadBufMap.get(threadId).get2();
 
-                    if (entries0.size() > 0)
-                        loadData(entries0, threadBufMap.get(threadId).get1());
+                    loadData(entries0, threadBufMap.get(threadId).get1());
 
                     threadBufMap.remove(threadId);
                 }
