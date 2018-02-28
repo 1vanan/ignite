@@ -1158,19 +1158,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
         int doneCnt = 0;
 
-        writeLock.lock();
-
-        try {
-            for (Long threadId : threadBufMap.keySet()) {
-                List<DataStreamerEntry> entries0 = threadBufMap.get(threadId).get2();
-
-                    loadData(entries0, threadBufMap.get(threadId).get1());
-
-                    threadBufMap.remove(threadId);
-            }
-        } finally {
-            writeLock.unlock();
-        }
+        flushKeyValueBuf();
 
         for (IgniteInternalFuture<?> f : activeFuts) {
             if (!f.isDone()) {
@@ -1299,19 +1287,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             return;
 
         try {
-            writeLock.lock();
-
-            try {
-                for (Long threadId : threadBufMap.keySet()) {
-                    List<DataStreamerEntry> entries0 = threadBufMap.get(threadId).get2();
-
-                    loadData(entries0, threadBufMap.get(threadId).get1());
-
-                    threadBufMap.remove(threadId);
-                }
-            } finally {
-                writeLock.unlock();
-            }
+            flushKeyValueBuf();
 
             for (Buffer buf : bufMappings.values())
                 buf.flush();
@@ -1323,6 +1299,23 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         }
         finally {
             leaveBusy();
+        }
+    }
+
+    /**
+     * Load data from key/value buffer and clean buffer for this thread.
+     */
+    private void flushKeyValueBuf(){
+        writeLock.lock();
+
+        try {
+            for (Long threadId : threadBufMap.keySet()) {
+                loadData(threadBufMap.get(threadId).get2(), threadBufMap.get(threadId).get1());
+
+                threadBufMap.remove(threadId);
+            }
+        } finally {
+            writeLock.unlock();
         }
     }
 
