@@ -741,9 +741,9 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
             return fut0;
         } finally {
-            leaveBusy();
-
             readLock.unlock();
+
+            leaveBusy();
         }
     }
 
