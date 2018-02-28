@@ -695,11 +695,11 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
         IgniteCacheFutureImpl fut0 = null;
 
-        long threadId = Thread.currentThread().getId();
-
         readLock.lock();
 
         try {
+            long threadId = Thread.currentThread().getId();
+
             if (!threadBufMap.containsKey(threadId)) {
                 IgniteCacheFutureImpl futPerBatch = new IgniteCacheFutureImpl(new GridFutureAdapter());
 
@@ -715,9 +715,11 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                 threadBufMap.put(threadId, futBufPair);
             }
 
-            fut0 = threadBufMap.get(threadId).get1();
+            IgniteBiTuple<IgniteCacheFutureImpl, List<DataStreamerEntry>> futBufPair0 = threadBufMap.get(threadId);
 
-            Collection<DataStreamerEntry> entries0 = threadBufMap.get(threadId).get2();
+            fut0 = futBufPair0.get1();
+
+            Collection<DataStreamerEntry> entries0 = futBufPair0.get2();
 
             entries0.add(entry);
 
@@ -760,11 +762,7 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
         }
 
-        if (entries.size() > 0) {
-            load0(entries, (GridFutureAdapter) future.internalFuture(), keys, 0);
-
-            entries.clear();
-        }
+        load0(entries, (GridFutureAdapter) future.internalFuture(), keys, 0);
 
         return future;
     }
@@ -1165,8 +1163,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
         try {
             for (Long threadId :
                     threadBufMap.keySet()) {
-                if (threadBufMap.get(threadId).get2().size() > 0) {
-                    loadData(threadBufMap.get(threadId).get2(), threadBufMap.get(threadId).get1());
+                List<DataStreamerEntry> entries0 = threadBufMap.get(threadId).get2();
+
+                if (entries0.size() > 0) {
+                    loadData(entries0, threadBufMap.get(threadId).get1());
 
                     threadBufMap.remove(threadId);
                 }
@@ -1307,8 +1307,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             try {
                 for (Long threadId :
                         threadBufMap.keySet()) {
-                    if (threadBufMap.get(threadId).get2().size() > 0)
-                        loadData(threadBufMap.get(threadId).get2(), threadBufMap.get(threadId).get1());
+                    List <DataStreamerEntry> entries0 = threadBufMap.get(threadId).get2();
+
+                    if (entries0.size() > 0)
+                        loadData(entries0, threadBufMap.get(threadId).get1());
 
                     threadBufMap.remove(threadId);
                 }
