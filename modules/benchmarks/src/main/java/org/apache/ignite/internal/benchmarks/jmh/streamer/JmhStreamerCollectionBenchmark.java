@@ -24,6 +24,7 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+import org.openjdk.jmh.runner.options.TimeValue;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -36,12 +37,12 @@ import java.util.concurrent.TimeUnit;
  */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class JmhStreamerCollectionBenchmark extends JmhStreamerAbstractBenchmark {
     /**
      * Streaming data amount.
      */
-    private final static int DATA_AMOUNT = 1000;
+    private final static int DATA_AMOUNT = 75000;
 
     /**
      * Start 3 servers and 1 client.
@@ -114,11 +115,13 @@ public class JmhStreamerCollectionBenchmark extends JmhStreamerAbstractBenchmark
      */
     public static void main(String[] args) throws RunnerException {
         ChainedOptionsBuilder builder = new OptionsBuilder()
-                .measurementIterations(21)
+                .measurementIterations(6)
+                .measurementTime(TimeValue.seconds(60))
                 .operationsPerInvocation(3)
-                .warmupIterations(7)
+                .warmupTime(TimeValue.seconds(30))
+                .warmupIterations(3)
                 .forks(1)
-                .threads(3)
+                .threads(1)
                 .include(JmhStreamerCollectionBenchmark.class.getSimpleName());
 
         new Runner(builder.build()).run();

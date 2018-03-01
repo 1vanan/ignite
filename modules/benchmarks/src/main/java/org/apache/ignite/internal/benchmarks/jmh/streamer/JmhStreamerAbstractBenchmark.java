@@ -20,6 +20,7 @@ package org.apache.ignite.internal.benchmarks.jmh.streamer;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.logger.NullLogger;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,6 +58,8 @@ class JmhStreamerAbstractBenchmark {
      */
     static IgniteConfiguration getConfiguration(String cfgName, boolean isClient) {
         IgniteConfiguration cfg = new IgniteConfiguration();
+
+        cfg.setGridLogger(new NullLogger());
 
         cfg.setIgniteInstanceName(cfgName);
 
