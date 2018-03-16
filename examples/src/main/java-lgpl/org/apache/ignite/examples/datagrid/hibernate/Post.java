@@ -48,7 +48,7 @@ class Post {
     /**
      * Default constructor (required by Hibernate).
      */
-    Post() {
+    public Post() {
         // No-op.
     }
 

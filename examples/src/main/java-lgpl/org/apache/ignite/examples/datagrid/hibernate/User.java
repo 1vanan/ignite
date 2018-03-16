@@ -56,7 +56,7 @@ class User {
     /**
      * Default constructor (required by Hibernate).
      */
-    User() {
+    public User() {
         // No-op.
     }
 
