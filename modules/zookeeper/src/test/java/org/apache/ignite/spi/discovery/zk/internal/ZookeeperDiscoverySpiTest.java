@@ -540,7 +540,7 @@ public class ZookeeperDiscoverySpiTest extends GridCommonAbstractTest {
                 @Override public boolean apply() {
                     return res.get() == null;
                 }
-            }, 30_000);
+            }, 70_000);
 
             assertNull(res.get());
         }
