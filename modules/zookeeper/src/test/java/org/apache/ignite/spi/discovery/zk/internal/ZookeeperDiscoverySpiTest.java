@@ -2133,7 +2133,7 @@ public class ZookeeperDiscoverySpiTest extends GridCommonAbstractTest {
         if (closeClientSock)
             testSockNio = true;
 
-        long stopTime = System.currentTimeMillis() + 60_000;
+        long stopTime = System.currentTimeMillis() + 30_000;
 
         AtomicBoolean stop = new AtomicBoolean();
 
